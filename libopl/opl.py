@@ -5,11 +5,11 @@
 from shutil import move, copyfile
 from zlib import crc32
 
-from artwork import Artwork
-from api import API
-from common import is_file, is_dir, exists
-from game import Game, ULGameImage, IsoGameImage
-from ul import ULConfig, ULConfigGame
+from libopl.artwork import Artwork
+from libopl.api import API
+from libopl.common import is_file, is_dir, exists
+from libopl.game import Game, ULGameImage, IsoGameImage
+from libopl.ul import ULConfig, ULConfigGame
 
 import os
 import re
@@ -261,7 +261,7 @@ class POPLManager:
 # Main
 # 
 # Parses arguments & calls function from POPLManager-object 
-if __name__ == '__main__':
+def main():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
@@ -308,3 +308,6 @@ if __name__ == '__main__':
         parser.print_help(sys.stderr)
         sys.exit(1)
     sys.exit(0)
+
+if __name__ == '__main__':
+    main()

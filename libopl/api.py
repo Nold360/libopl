@@ -7,8 +7,8 @@
 # API Sourcecode: https://github.com/Nold360/opengamedb
 # Config Example: https://github.com/Nold360/libopl/example.opl.ini
 from os import path
-from artwork import Artwork
-from common import slugify, exists, config
+from libopl.artwork import Artwork
+from libopl.common import slugify, exists, config
 
 import re
 import json

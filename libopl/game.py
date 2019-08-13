@@ -2,7 +2,7 @@
 ###
 # Game Class
 # 
-from common import usba_crc32, slugify
+from libopl.common import usba_crc32, slugify
 from os import path
 
 import re
@@ -41,6 +41,7 @@ class Game():
     def __init__(self, filepath=None, id=None, recover_id=True):
         if filepath:
             self.set("filepath", filepath)
+            self.get_common_filedata()
         if id:
             self.set("id", id)
             self.gen_opl_id()
@@ -124,11 +125,11 @@ class Game():
     # Getting usefill data from filename
     # for ul & iso names
     def get_common_filedata(self):
-        if '/' in self.get("filepath"):
-            self.set("filename", path.basename(self.get("filepath")))
-            self.set("filedir", path.dirname(self.get("filepath")))
+        print(path.basename(self.get("filepath")))
+        self.set("filename", path.basename(self.get("filepath")))
+        self.set("filedir", path.dirname(self.get("filepath")))
 
-        if re.match(r'.*\.iso$', self.get("filename")):
+        if re.match(r'.*\.iso$', str(self.get("filename"))):
             self.set("filetype", "iso")
 
         try:
