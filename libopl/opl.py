@@ -120,7 +120,6 @@ class POPLManager:
             # UL Format, when splitting, or whatever...
             if game.type == Game.UL:
                 print("Adding file in UL-Format...")
-                game.to_UL(args.opl_drive)
 
                 # Create OPL-Config for Game; read & merge ul.cfg
                 game.ulcfg = ULConfigGame(game=game)
@@ -129,6 +128,12 @@ class POPLManager:
 
                 print("Reading ul.cfg...")
                 cfg.read()
+
+                fileparts = game.to_UL(args.opl_drive, args.force)
+                if fileparts == 0:
+                   print("Something went wrong, skipping game '%s'!" % game.get('filename'))
+                   continue
+
                 cfg.dump()
 
                 print({game.get("opl_id"): game.ulcfg})
@@ -145,9 +150,16 @@ class POPLManager:
                     filename = game.get("filename")
 
                 filename += "." + game.get("filetype")
-                filepath = os.join.path(args.opl_drive, "DVD", filename)
+                filepath = os.path.join(args.opl_drive, "DVD", filename)
 
                 print("Copy file to " + str(filepath) + ", please wait...")
+                if is_file(filepath) and not args.force:
+                    print("Warn: File '%s' already exists! Use -f to force overwriting." % game.get('filename'))
+                    print('Skipping game...')
+                    continue
+                elif args.force:
+                    print("Overwriting forced!")
+
                 copyfile(game.get("filepath"), filepath)
  
             
@@ -274,6 +286,7 @@ def main():
 
     add_parser = subparsers.add_parser("add", help="Add Media Image to OPL-Drive")
     add_parser.add_argument("--rename", "-r" , help="Rename Game by obtaining it's title from API", action='store_true')
+    add_parser.add_argument("--force", "-f" , help="Force overwriting of existing files", action='store_true', default=False)
     add_parser.add_argument("--ul", "-u" , help="Force UL-Game converting", action='store_true')
     add_parser.add_argument("opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb")
     add_parser.add_argument("src_file",nargs='+', help="Media/ISO Source File")

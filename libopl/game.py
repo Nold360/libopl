@@ -2,7 +2,7 @@
 ###
 # Game Class
 # 
-from libopl.common import usba_crc32, slugify
+from libopl.common import usba_crc32, slugify, is_file
 from os import path
 
 import re
@@ -209,13 +209,17 @@ class ULGameImage(Game):
         return True
 
     # (Split) ISO into UL-Format
-    def to_UL(self, dest_path):
+    def to_UL(self, dest_path, force=False):
         file_part = 0
         with open(self.get("filepath"), 'rb') as f:
             chunk = f.read(ULGameImage.CHUNK_SIZE)
             while chunk:
                 filename =  '%s/ul.%s.%s.%.2X' %( dest_path, \
                     self.get("crc32")[2:].upper(), self.get("opl_id"), file_part)
+
+                if is_file(filename) and not force:
+                    print("Warn: File '%s' already exists! Use -f to force overwrite." % filename)
+                    return 0
 
                 print("Writing File '%s'..." % filename)
                 with open(filename, 'wb') as outfile:

@@ -53,7 +53,10 @@ class ULConfigGame():
             self.name = self.game.get("title")[:32]
             self.opl_id = self.game.get("opl_id")
             self.region_code = "ul." + self.opl_id
-            self.parts = int(self.game.get("parts"))
+            try:
+                self.parts = int(self.game.get("parts"))
+            except: pass
+
             #FIXME: static media type.. matters?
             self.media = b'\x14'
             self.unknown = b'\x00'
