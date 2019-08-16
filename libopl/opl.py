@@ -265,8 +265,6 @@ def main():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-f', '--foo', action='store_true')
-
     subparsers = parser.add_subparsers(help='Choose your path...')
 
     list_parser = subparsers.add_parser("list", help="List Games on OPL-Drive")

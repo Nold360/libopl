@@ -29,8 +29,8 @@ On Linux:
 
 ## Usage
 ```
-$ libopl/opl.py  --help
-usage: opl.py [-h] [-f] {list,add,artwork,fix,init} ...
+$ opl --help
+usage: opl [-h] [-f] {list,add,artwork,fix,init} ...
 
 positional arguments:
   {list,add,artwork,fix,init}
@@ -43,5 +43,4 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  -f, --foo
 ```

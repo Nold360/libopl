@@ -125,7 +125,6 @@ class Game():
     # Getting usefill data from filename
     # for ul & iso names
     def get_common_filedata(self):
-        print(path.basename(self.get("filepath")))
         self.set("filename", path.basename(self.get("filepath")))
         self.set("filedir", path.dirname(self.get("filepath")))
 
