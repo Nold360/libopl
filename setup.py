@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="libopl",
-    version="0.1.0",
+    version="0.1.1",
     author="Nold",
     author_email="nold@gnu.one",
     description="Library And Tool To Manage Open-PS2-Loader USB-Drives & Games",

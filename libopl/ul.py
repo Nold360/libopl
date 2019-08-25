@@ -53,9 +53,7 @@ class ULConfigGame():
             self.name = self.game.get("title")[:32]
             self.opl_id = self.game.get("opl_id")
             self.region_code = "ul." + self.opl_id
-            try:
-                self.parts = int(self.game.get("parts"))
-            except: pass
+            self.parts = int(self.game.get("parts"))
 
             #FIXME: static media type.. matters?
             self.media = b'\x14'
@@ -82,7 +80,6 @@ class ULConfigGame():
         assert self.media
 
         # FIXME: for var: if ! byte(var): get_bytes(var)
-        print(self.region_code)
         data =  self.__get_bytes(self.name.strip(), 32)
         data += self.__get_bytes(self.region_code.strip(), 14)
         data += self.__get_bytes(self.unknown, 1)
@@ -141,7 +138,9 @@ class ULConfig():
 
     # Write back games to ul.cfg
     def write(self):
-        if not self.filepath: return False
+        if not self.filepath: 
+            return False
+
         with open(self.filepath, 'wb+') as cfg:
             for id in self.ulgames:
                 cfg.write(self.ulgames[id].get_binary_data())

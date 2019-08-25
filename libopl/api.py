@@ -74,9 +74,7 @@ Example: http://github.com/Nold360/libopl/example.opl.ini
 
         artworks = []
         meta = game.get("meta")
-        try:
-           meta["artwork"] 
-        except Exception as e: 
+        if not meta or not 'artwork' in meta.keys():
             print("Oops: No Artworks found in Metadata.")
             return None
 
@@ -95,8 +93,8 @@ Example: http://github.com/Nold360/libopl/example.opl.ini
         if not self.enabled:
             return False
 
-        game.artworks = self.get_artwork(game)
-        if game.artworks == []:
+        game.set('artwork', self.get_artwork(game))
+        if game.get('artwork') == []:
             print("No Artwork available for this title atm... sorry!")
             return False
 

@@ -2,7 +2,7 @@
 ###
 # Game Class
 # 
-from libopl.common import usba_crc32, slugify, is_file
+from libopl.common import usba_crc32, slugify, is_file, read_in_chunks
 from os import path
 
 import re
@@ -35,16 +35,17 @@ class Game():
     }
 
     # Regex for game serial/ids 
-    id_regex = re.compile(r'[a-zA-Z]{4}.?\d{3}\.?\d{2}')
+    id_regex = re.compile(r'S[a-zA-z]{3}.?\d{3}\.?\d{2}')
 
     # Recover generate id from filename
     def __init__(self, filepath=None, id=None, recover_id=True):
         if filepath:
             self.set("filepath", filepath)
-            self.get_common_filedata()
+            self.get_common_filedata(recover_id)
         if id:
             self.set("id", id)
             self.gen_opl_id()
+            
 
     # get data, crc32 is generated on the fly from the game title
     def get(self, key):
@@ -85,20 +86,31 @@ class Game():
         oplid = oplid[:8] + "." + oplid[8:]
       except: 
         oplid = None
-      self.set("opl_id", oplid.upper())
+      self.set("opl_id", oplid)
       return oplid.upper()
+
+    def recover_id(self):
+        print('Trying to recover Media-ID...')
+        f = open(self.get('filepath'), 'rb')
+        for chunk in read_in_chunks(f):
+            id = self.id_regex.findall(str(chunk))
+            if len(id) > 0:
+                print('Success: %s' % id[0])
+                self.set('id', id[0])
+                self.gen_opl_id()
+                return id[0]
+        return None
 
     # Set missing attributes using api metadata
     def set_metadata(self, api, override=False):
-        if not self.get("meta"):
-            if not self.get("id"):
-                return False
+        if not self.get("id"):
+            return False
 
+        try:
             meta = api.get_metadata(self.get("id"))
-            if meta:
-                self.set("meta", meta)
-            else:
-                return False
+            self.set("meta", meta)
+        except:
+            return False
         
         self.set("src_title", self.get("title"))
         if self.get("meta"):
@@ -113,7 +125,7 @@ class Game():
         # FIXME: dynmaic length of filetype 
         if override:
             try:
-                self.set("title", slugify(self.get("meta")["name"][:64]))
+                self.set("title", slugify(self.get("meta")["name"][:32]))
             except: pass
             
         self.set("filename", self.get("opl_id") + "." + self.get("title"))
@@ -124,17 +136,20 @@ class Game():
 
     # Getting usefill data from filename
     # for ul & iso names
-    def get_common_filedata(self):
+    def get_common_filedata(self, recover_id=True):
         self.set("filename", path.basename(self.get("filepath")))
         self.set("filedir", path.dirname(self.get("filepath")))
 
         if re.match(r'.*\.iso$', str(self.get("filename"))):
             self.set("filetype", "iso")
 
+        # try to get id out of filename
         try:
             self.set("id", self.id_regex.findall(self.get("filename"))[0])
-            self.gen_opl_id()
         except:
+            #else try to recover
+            self.recover_id()
+        if not self.get('id'):
             return False
 
         self.gen_opl_id()
@@ -195,9 +210,6 @@ class ULGameImage(Game):
         self.filetype = None
         self.type = Game.UL
 
-        # Call func from super
-        self.get_common_filedata()
-
         # Pattern: ul.{CRC32(title)}.{OPL_ID}.{PART}
         parts = self.get("filename").split('.')
         self.set("crc32", parts[1])
@@ -214,15 +226,16 @@ class ULGameImage(Game):
         with open(self.get("filepath"), 'rb') as f:
             chunk = f.read(ULGameImage.CHUNK_SIZE)
             while chunk:
-                filename =  '%s/ul.%s.%s.%.2X' %( dest_path, \
-                    self.get("crc32")[2:].upper(), self.get("opl_id"), file_part)
+                filename =  'ul.%s.%s.%.2X' % ( self.get("crc32")[2:].upper(), \
+                            self.get("opl_id"), file_part)
+                filepath = path.join(dest_path, filename)
 
-                if is_file(filename) and not force:
+                if is_file(filepath) and not force:
                     print("Warn: File '%s' already exists! Use -f to force overwrite." % filename)
                     return 0
 
-                print("Writing File '%s'..." % filename)
-                with open(filename, 'wb') as outfile:
+                print("Writing File '%s'..." % filepath)
+                with open(filepath, 'wb') as outfile:
                     outfile.write(chunk)
                     file_part += 1 
                     chunk = f.read(ULGameImage.CHUNK_SIZE)
@@ -244,8 +257,6 @@ class IsoGameImage(Game):
     # Get (meta-)data from filename
     def get_filedata(self):
         self.set("filetype", "iso")
-
-        self.get_common_filedata()
 
         # FIXME: Better title / id sub
         self.set("title", self.id_regex.sub('', self.get("filename")))
