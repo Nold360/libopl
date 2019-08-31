@@ -35,7 +35,7 @@ class Game():
     }
 
     # Regex for game serial/ids 
-    id_regex = re.compile(r'S[a-zA-z]{3}.?\d{3}\.?\d{2}')
+    id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
     # Recover generate id from filename
     def __init__(self, filepath=None, id=None, recover_id=True):
