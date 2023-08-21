@@ -3,15 +3,20 @@
 # Game Class
 # 
 from libopl.common import usba_crc32, slugify, is_file, read_in_chunks
+from enum import Enum
 from os import path
 
 import re
 
+from libopl.ul import ULConfigGame
+
+class GameType(Enum):
+    UL = 1
+    ISO = 2
+
 class Game():
     # constant values for gametypes
-    UL = 0
-    ISO = 1
-    type = None
+    type: GameType = None
     ulcfg = None
 
     # (Meta-)data-dict for all the game data
@@ -142,6 +147,7 @@ class Game():
 
         if re.match(r'.*\.iso$', str(self.get("filename"))):
             self.set("filetype", "iso")
+            self.type = GameType.ISO
 
         # try to get id out of filename
         try:
@@ -179,8 +185,9 @@ class Game():
 # UL-Format game, child-class of "Game"
 class ULGameImage(Game):
     # ULConfigGame object
-    ulcfg = None
-    type = Game.UL
+    ulcfg: ULConfigGame
+    type: GameType = GameType.UL
+    crc32: str
 
     # Chunk size matched USBUtil
     CHUNK_SIZE = 1073741824
@@ -208,7 +215,6 @@ class ULGameImage(Game):
     # Try to parse a filename to usefull data
     def get_filedata(self):
         self.filetype = None
-        self.type = Game.UL
 
         # Pattern: ul.{CRC32(title)}.{OPL_ID}.{PART}
         parts = self.get("filename").split('.')
@@ -245,7 +251,7 @@ class ULGameImage(Game):
 ####
 # Class for ISO-Games (or alike), child-class of "Game"
 class IsoGameImage(Game):
-    type = Game.ISO
+    type = GameType.ISO
     # Create Game based on filepath
     def __init__(self, filepath=None, data=None):
         if filepath:
