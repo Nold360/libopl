@@ -15,9 +15,7 @@ from libopl.ul import ULConfig, ULConfigGame
 import os
 import re
 import sys
-import json
 import argparse
-import requests
 
 ## todo
 # config file ~/.config/popl.yml
@@ -94,18 +92,14 @@ class POPLManager:
         return True
 
     def delete(self, args):
-        # print(args)
-        print("games:")
-        for game in self.__get_games(self.__get_opl_games(args.opl_drive)):
-            print(game.get('opl_id'))
+        for game in self.__get_games(self.__get_opl_games(args.opl_drive, "DVD") + self.__get_opl_games(args.opl_drive, "CD")):
             if game.get("opl_id") == args.opl_id[0]:
-                print("game found")
                 match game.type:
                     case GameType.UL:
                         print("Deletion for UL not yet implemented") 
                     case GameType.ISO:
                         if os.path.exists(fp := game.get("filepath")):
-                            print("Deleting...")
+                            print(f"Deleting {args.opl_id[0]}...")
                             os.remove(fp)
 
     # Add game(s) to args.opl_drive
@@ -117,13 +111,12 @@ class POPLManager:
     def add(self, args):
         self.api = API()
         
-        
         for game in self.__get_games(args.src_file):
             if not game.get('id'):
                 print("Error while parsing file: %s" % game.get("filepath"))
                 continue
 
-            if game.get("size") > 4000 or args.ul:
+            if (game.get("size") > 4000 and not args.iso) or args.ul:
                 print("Forced conversion to UL-Format...")
                 game = game.to_ULGameImage()
 
@@ -161,7 +154,7 @@ class POPLManager:
                     filename = game.get("filename")
 
                 filename += "." + game.get("filetype")
-                filepath = os.path.join(args.opl_drive, "DVD", filename)
+                filepath = os.path.join(args.opl_drive, "DVD" if game.get("size") > 700 else "CD", filename)
 
                 print("Copy file to " + str(filepath) + ", please wait...")
                 if is_file(filepath) and not args.force:
@@ -187,6 +180,9 @@ class POPLManager:
     #  - Rename ISOs to {OPL-ID}.{title}.iso
     #  - Download missing artwork / overwrite existing
     def fix(self, args):
+        raise NotImplementedError("ISO names are no longer an issue in the latest beta OPL, \
+                                  can't be bothered to implement UL stuff")
+
         self.api = API()
         self.__get_games(self.__get_opl_games(args.opl_drive))
         
@@ -194,15 +190,15 @@ class POPLManager:
         self.ulcfg = ULConfig(os.path.join(args.opl_drive, "ul.cfg"))
         self.ulcfg.read()
 
-        for game in self.games:
+        for game in self.__get_games(self.__get_opl_games(args.opl_drive)):
             if not game.get('id'):
-                print("Error while parsing file: %s" % game.get("filepath"))
+                print(f"Error while parsing file: {game.get('filepath')}")
                 continue
 
             print("Fixing '%s'..." % game.get("filename"))
 
             if not game.get("id"):
-                print("ID not found in file: '%s'" % game.get("filepath"))
+                print(f"ID not found in file: {game.get('filepath')}")
                 continue
 
 
@@ -250,7 +246,7 @@ class POPLManager:
         print("|-> ISO-Games:")
 
         # Find all game iso's
-        for media_file in self.__get_opl_games(args.opl_drive, type="DVD"):
+        for media_file in self.__get_opl_games(args.opl_drive, type="DVD") + self.__get_opl_games(args.opl_drive, type="CD"):
             game = Game(media_file)
             game = game.evolve()
             game.get_filedata()
@@ -281,7 +277,7 @@ class POPLManager:
         for dir in ['APPS', 'BOOT', 'ART', 'CD', 'CFG', 'CHT', 'DVD', 'THM', 'VMC' ]:
             if not is_dir(os.path.join(args.opl_drive, dir)):
                 print(dir)
-                os.mkdir(os.path.join(args.opl_drive, dir))
+                os.mkdir(os.path.join(args.opl_drive, dir), 0o777)
         print("Done!")
 ####
 # Main
@@ -302,6 +298,7 @@ def __main__():
     add_parser.add_argument("--rename", "-r" , help="Rename Game by obtaining it's title from API", action='store_true')
     add_parser.add_argument("--force", "-f" , help="Force overwriting of existing files", action='store_true', default=False)
     add_parser.add_argument("--ul", "-u" , help="Force UL-Game converting", action='store_true')
+    add_parser.add_argument("--iso", "-i" , help="Don't do UL conversion", action='store_true')
     add_parser.add_argument("opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb")
     add_parser.add_argument("src_file",nargs='+', help="Media/ISO Source File")
     add_parser.set_defaults(func=opl.add)
