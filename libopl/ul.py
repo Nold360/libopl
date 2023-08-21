@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 #from game import ULGameImage
 from libopl.common import usba_crc32
-from libopl.game import ULGameImage
 
 # single game in ul.cfg / on filesyystem?
 # ul.cfg is binary

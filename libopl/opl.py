@@ -3,12 +3,13 @@
 # Python CLI Replacement for OPLManager
 # 
 from shutil import move, copyfile
+from typing import List
 from zlib import crc32
 
 from libopl.artwork import Artwork
 from libopl.api import API
 from libopl.common import is_file, is_dir, exists
-from libopl.game import Game, ULGameImage, IsoGameImage
+from libopl.game import Game, ULGameImage, IsoGameImage, GameType
 from libopl.ul import ULConfig, ULConfigGame
 
 import os
@@ -26,7 +27,7 @@ import requests
 class POPLManager:
     args = None
     api = None
-    games = []
+    games: List[Game] = []
 
     def __init__(self, args=None):
         self.set_args(args)
@@ -42,7 +43,7 @@ class POPLManager:
             filepath = os.path.join(path, f)
 
             # Skip parts of ul-files
-            if re.match(r'^ul\..*\.[0-9][1-9]$', f): continue
+            if re.match(r'^ul\..*\.[0-9][1-9]$', f) or f == "games.bin": continue
             if is_file(filepath):
                 games.append(filepath)
         return games
@@ -70,7 +71,7 @@ class POPLManager:
         self.__get_games(self.__get_opl_games(args.opl_drive))
         
         for game in self.games:
-            if game.type != Game.UL:
+            if game.type != GameType.UL:
                 if not game.get("meta"):
                     meta = self.api.get_metadata(game.get("id"))
                     if meta:
@@ -93,18 +94,19 @@ class POPLManager:
         return True
 
     def delete(self, args):
-        self.__get_games(self.__get_opl_games(args.opl_drive))
-        for game in self.games:
-            if game.type != Game.UL:
-                print(game.get('opl_id'))
-
-        print("\nReading ul.cfg...")
-        if is_file(args.opl_drive + "/ul.cfg"):
-            ulcfg = ULConfig(os.path.join(args.opl_drive, "ul.cfg"))
-            ulcfg.read()
-            for ulgame in ulcfg.ulgames:
-                game=ULGameImage(ulcfg=ulcfg.ulgames[ulgame])
-                print(game.get('opl_id'))
+        # print(args)
+        print("games:")
+        for game in self.__get_games(self.__get_opl_games(args.opl_drive)):
+            print(game.get('opl_id'))
+            if game.get("opl_id") == args.opl_id[0]:
+                print("game found")
+                match game.type:
+                    case GameType.UL:
+                        print("Deletion for UL not yet implemented") 
+                    case GameType.ISO:
+                        if os.path.exists(fp := game.get("filepath")):
+                            print("Deleting...")
+                            os.remove(fp)
 
     # Add game(s) to args.opl_drive
     #  - split game if > 4GB / forced
@@ -129,7 +131,7 @@ class POPLManager:
             game.dump()
             
             # UL Format, when splitting, or whatever...
-            if game.type == Game.UL:
+            if game.type == GameType.UL:
                 print("Adding file in UL-Format...")
 
                 fileparts = game.to_UL(args.opl_drive, args.force)
@@ -261,13 +263,16 @@ class POPLManager:
             if isinstance(game, IsoGameImage):
                 print(" [%s] %s " %(game.get("opl_id"), game.get("title")))
 
-        # Read il.cfg & output games
-        ulcfg = ULConfig(args.opl_drive + "/ul.cfg")
-        ulcfg.read()
-        print("\n|-> UL-Games:")
-        if ulcfg.ulgames != {}:
-            for game in ulcfg.ulgames:
-                print(" [%s] %s" % (game.replace('ul.', ''), ulcfg.ulgames[game].name))
+        # Read ul.cfg & output games
+        if os.path.exists(args.opl_drive + "ul.cfg"):
+            ulcfg = ULConfig(args.opl_drive + "/ul.cfg")
+            ulcfg.read()
+            print("\n|-> UL-Games:")
+            if ulcfg.ulgames != {}:
+                for game in ulcfg.ulgames:
+                    print(" [%s] %s" % (game.replace('ul.', ''), ulcfg.ulgames[game].name))
+        else:
+            print("No UL-Games installed")
 
     
         # Create OPL Folders / stuff
@@ -282,7 +287,7 @@ class POPLManager:
 # Main
 # 
 # Parses arguments & calls function from POPLManager-object 
-def main():
+def __main__():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
@@ -334,4 +339,4 @@ def main():
     sys.exit(0)
 
 if __name__ == '__main__':
-    main()
+    __main__()
