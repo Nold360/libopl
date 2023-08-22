@@ -2,6 +2,9 @@
 ###
 # Game Class
 # 
+import json
+from typing import List
+from libopl.artwork import Artwork
 from libopl.common import usba_crc32, slugify, is_file, read_in_chunks
 from enum import Enum
 from os import path
@@ -11,33 +14,27 @@ import re
 from libopl.ul import ULConfigGame
 
 class GameType(Enum):
-    UL = 1
-    ISO = 2
+    UL = "ul (USBExtreme)"
+    ISO = "iso"
 
 class Game():
     # constant values for gametypes
     type: GameType = None
     ulcfg = None
 
-    # (Meta-)data-dict for all the game data
-    data = { 
-        "filedir": None,
-        "filename": None,
-        "filetype": None,
-        "filepath": None,
-        "id": None,
-        "opl_id": None,
-        "artwork":None,
-        "title": None,
-        "crc32": None,
-        "size": None,
-
-        "src_title": None,
-        "src_filename": None,
-
-        # Data from API
-        "meta": None
-    }
+    filedir: str 
+    filename: str 
+    filetype: str 
+    filepath: str 
+    id: str
+    opl_id: str 
+    artwork: List[Artwork]
+    title: str 
+    crc32: str 
+    size: float
+    src_title: str 
+    src_filename: str
+    meta: dict
 
     # Regex for game serial/ids 
     id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
@@ -45,84 +42,74 @@ class Game():
     # Recover generate id from filename
     def __init__(self, filepath=None, id=None, recover_id=True):
         if filepath:
-            self.set("filepath", filepath)
+            self.filepath = filepath
             self.get_common_filedata(recover_id)
         if id:
-            self.set("id", id)
+            self.id = id
             self.gen_opl_id()
-            
 
-    # get data, crc32 is generated on the fly from the game title
-    def get(self, key):
-        if key == "crc32":
-            try: return hex(usba_crc32(self.data["title"]))
-            except: return None
-        try: return self.data.get(key)
-        except: return None
+    def __repr__(self):
+        return f"""\n----------------------------------------
+LANG=en_US.UTF-8OPL-ID:       {self.opl_id}
+Size (MB):    {self.size} 
+Source Title: {self.src_title} 
+New Title:    {self.title} 
+Filename:     {self.filename}
 
-    # Set data
-    def set(self, key, value):
-        self.data[key] = value
+Filetype:     {self.filetype}
+Filedir:      {self.filedir}
+CRC32:        {self.crc32}
+Type:         {self.type}
+ID:           {self.id} 
+Filepath:     {self.filepath}
+"""
 
-    # Dump all da stuff...
-    def dump(self):
-        print("\n----------------------------------------")
-        print("OPL-ID:       " + str(self.get("opl_id")))
-        print("Size (MB):    " + str(self.get("size")))
-        print("Source Title: " + str(self.get("src_title")))
-        print("New Title:    " + str(self.get("title")))
-        print("Filename:     " + str(self.get("filename")))
-
-        print("")
-        print("Filetype:     " + str(self.get("filetype")))
-        print("Filedir:      " + str(self.get("filedir")))
-        print("CRC32:        " + str(self.get("crc32")))
-        print("Type:         " + str(self))
-        print("ID:           " + str(self.get("id")))
-        print("Filepath:     " + str(self.get("filepath")))
-        print("")
-        
+    def __str__(self):
+        return self.__repr__() 
+    
+    def print_data(self):
+        print(str(self))
     
     # Generate Serial/ID in OPL-Format
     def gen_opl_id(self):
-      oplid = self.get("id").replace('-', '_')
+      oplid = self.id.replace('-', '_')
       oplid = oplid.replace('.', '')
       try: 
         oplid = oplid[:8] + "." + oplid[8:]
       except: 
         oplid = None
-      self.set("opl_id", oplid)
+      self.opl_id = oplid
       return oplid.upper()
 
     def recover_id(self):
         print('Trying to recover Media-ID...')
-        f = open(self.get('filepath'), 'rb')
+        f = open(self.filepath, 'rb')
         for chunk in read_in_chunks(f):
             id = self.id_regex.findall(str(chunk))
             if len(id) > 0:
                 print('Success: %s' % id[0])
-                self.set('id', id[0])
+                self.id = id[0]
                 self.gen_opl_id()
                 return id[0]
         return None
 
     # Set missing attributes using api metadata
     def set_metadata(self, api, override=False):
-        if not self.get("id"):
+        if not self.id:
             return False
 
         try:
-            meta = api.get_metadata(self.get("id"))
-            self.set("meta", meta)
+            meta = api.get_metadata(self.id)
+            self.meta = meta
         except:
             return False
         
-        self.set("src_title", self.get("title"))
-        if self.get("meta"):
+        self.src_title = self.title
+        if self.meta:
             try:
-                if not self.get("title") or override: self.set("title", self.get("meta")["name"][:64])
-                if not self.get("id") or override: self.set("id", self.metadata["id"])
-                if not self.get("opl_id") or override: self.set("opl_id", self.metadata["opl_id"])
+                if not self.title or override: self.title = self.meta["name"][:64]
+                if not self.id or override: self.id = self.metadata["id"]
+                if not self.opl_id or override: self.opl_id = self.metadata["opl_id"]
             except: pass
 
         # Max iso filename length = 64
@@ -130,10 +117,10 @@ class Game():
         # FIXME: dynmaic length of filetype 
         if override:
             try:
-                self.set("title", slugify(self.get("meta")["name"][:32]))
+                self.title = slugify(self.meta["name"][:32])
             except: pass
             
-        self.set("filename", self.get("opl_id") + "." + self.get("title"))
+        self.filename = self.opl_id + "." + self.title
 
         return True 
         #new_filename = self.filename[:64-len(".iso")]
@@ -142,16 +129,16 @@ class Game():
     # Getting usefill data from filename
     # for ul & iso names
     def get_common_filedata(self, recover_id=True):
-        self.set("filename", path.basename(self.get("filepath")))
-        self.set("filedir", path.dirname(self.get("filepath")))
+        self.filename = path.basename(self.filepath)
+        self.filedir = path.dirname(self.filepath)
 
-        if re.match(r'.*\.iso$', str(self.get("filename"))):
-            self.set("filetype", "iso")
+        if re.match(r'.*\.iso$', str(self.filename)):
+            self.filetype = "iso"
             self.type = GameType.ISO
 
         # try to get id out of filename
         try:
-            self.set("id", self.id_regex.findall(self.get("filename"))[0])
+            self.id = self.id_regex.findall(self.filename)[0]
         except:
             #else try to recover
             self.recover_id()
@@ -159,27 +146,8 @@ class Game():
             return False
 
         self.gen_opl_id()
-        self.set("size", path.getsize(self.get("filepath"))>>20)
+        self.size = path.getsize(self.filepath)>>20
         return True
-
-    # Return self as UL/IsoGameImage when filetype/name matches
-    def evolve(self):
-        if self.get("filetype") == "iso":
-            return self.to_IsoGameImage()
-        elif not self.get("title"):
-            return False
-        elif re.match(r'^ul\.', self.get("title")):
-            return self.to_ULGameImage()
-        return False
-
-    def to_ULGameImage(self):
-        try: return ULGameImage(data=self.data)
-        except: return None
-
-    def to_IsoGameImage(self):
-        try: return IsoGameImage(data=self.data)
-        except: return None
-
 
 ####
 # UL-Format game, child-class of "Game"
@@ -201,12 +169,12 @@ class ULGameImage(Game):
         # FRom ul.cfg
         elif ulcfg:
             self.ulcfg = ulcfg
-            self.set("opl_id", self.ulcfg.region_code.replace('ul.', ''))
-            self.set("id", self.get("opl_id"))
-            self.set("title", self.ulcfg.name)
-            self.set("crc32", self.ulcfg.crc32)
-            self.set("filename", "ul." + self.get("crc32").replace('0x', '').upper())
-            self.set("filename", self.get("filename") + "." + self.get("opl_id") + ".00")
+            self.opl_id = self.ulcfg.region_code.replace('ul.', '')
+            self.id = self.opl_id
+            self.title = self.ulcfg.name
+            self.crc32 = self.ulcfg.crc32
+            self.filename = "ul." + self.crc32.replace('0x', '').upper()
+            self.filename = self.filename + "." + self.opl_id + ".00"
         # Evolved from Game-Class
         elif data:
             self.data = data
@@ -217,11 +185,11 @@ class ULGameImage(Game):
         self.filetype = None
 
         # Pattern: ul.{CRC32(title)}.{OPL_ID}.{PART}
-        parts = self.get("filename").split('.')
-        self.set("crc32", parts[1])
+        parts = self.filename.split('.')
+        self.crc32 = parts[1]
 
         # Trim Title to 32chars
-        self.set("title", self.get("title")[:32])
+        self.title = self.title[:32]
         
         #self.crc32 = usba_crc32(self.title)
         return True
@@ -229,11 +197,11 @@ class ULGameImage(Game):
     # (Split) ISO into UL-Format
     def to_UL(self, dest_path, force=False):
         file_part = 0
-        with open(self.get("filepath"), 'rb') as f:
+        with open(self.filepath, 'rb') as f:
             chunk = f.read(ULGameImage.CHUNK_SIZE)
             while chunk:
-                filename =  'ul.%s.%s.%.2X' % ( self.get("crc32")[2:].upper(), \
-                            self.get("opl_id"), file_part)
+                filename =  'ul.%s.%s.%.2X' % ( self.crc32[2:].upper(), \
+                            self.opl_id, file_part)
                 filepath = path.join(dest_path, filename)
 
                 if is_file(filepath) and not force:
@@ -245,7 +213,7 @@ class ULGameImage(Game):
                     outfile.write(chunk)
                     file_part += 1 
                     chunk = f.read(ULGameImage.CHUNK_SIZE)
-        self.set("parts", file_part)
+        self.parts = file_part
         return file_part
 
 ####
@@ -262,11 +230,11 @@ class IsoGameImage(Game):
 
     # Get (meta-)data from filename
     def get_filedata(self):
-        self.set("filetype", "iso")
+        self.filetype = "iso"
 
         # FIXME: Better title / id sub
-        self.set("title", self.id_regex.sub('', self.get("filename")))
-        self.set("title", self.get("title").replace("."+self.get("filetype"), ''))
-        self.set("title", self.get("title").strip('._-\ '))
-        self.set("filename", self.get("filename").replace("."+self.get("filetype"), ''))
-        self.set("crc32", hex(usba_crc32(self.get("title"))))
+        self.title = self.id_regex.sub('', self.filename)
+        self.title = self.title.replace("."+self.filetype, '')
+        self.title = self.title.strip('._-\ ')
+        self.filename = self.filename.replace("."+self.filetype, '')
+        self.crc32 = hex(usba_crc32(self.title))

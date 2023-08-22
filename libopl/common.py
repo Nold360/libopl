@@ -8,7 +8,6 @@ import ctypes
 import configparser
 import unicodedata
 import re
-import sys
 
 
 def is_file(filepath):

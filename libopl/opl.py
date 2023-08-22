@@ -6,7 +6,6 @@ from shutil import move, copyfile
 from typing import List
 from zlib import crc32
 
-from libopl.artwork import Artwork
 from libopl.api import API
 from libopl.common import is_file, is_dir, exists
 from libopl.game import Game, ULGameImage, IsoGameImage, GameType
@@ -70,10 +69,10 @@ class POPLManager:
         
         for game in self.games:
             if game.type != GameType.UL:
-                if not game.get("meta"):
-                    meta = self.api.get_metadata(game.get("id"))
+                if not game.meta:
+                    meta = self.api.get_metadata(game.id)
                     if meta:
-                        game.set("meta", meta)
+                        game.meta = meta
                 self.api.download_artwork(game, args.opl_drive, override=args.force)
 
         print("\nReading ul.cfg...")
@@ -83,9 +82,9 @@ class POPLManager:
             ulcfg.dump()
             for ulgame in ulcfg.ulgames:
                 game=ULGameImage(ulcfg=ulcfg.ulgames[ulgame])
-                game.set("meta", self.api.get_metadata(game.get("opl_id")))
-                game.set("artwork", self.api.get_artwork(game))
-                game.dump()
+                game.meta = self.api.get_metadata(game.opl_id)
+                game.artwork = self.api.get_artwork(game)
+                game.print_data()
                 self.api.download_artwork(game, args.opl_drive, override=args.force)
         else:
             print("Skipped. No ul.cfg found on opl_drive.")
@@ -93,12 +92,12 @@ class POPLManager:
 
     def delete(self, args):
         for game in self.__get_games(self.__get_opl_games(args.opl_drive, "DVD") + self.__get_opl_games(args.opl_drive, "CD")):
-            if game.get("opl_id") == args.opl_id[0]:
+            if game.opl_id == args.opl_id[0]:
                 match game.type:
                     case GameType.UL:
                         print("Deletion for UL not yet implemented") 
                     case GameType.ISO:
-                        if os.path.exists(fp := game.get("filepath")):
+                        if os.path.exists(fp := game.filepath):
                             print(f"Deleting {args.opl_id[0]}...")
                             os.remove(fp)
 
@@ -113,15 +112,15 @@ class POPLManager:
         
         for game in self.__get_games(args.src_file):
             if not game.get('id'):
-                print("Error while parsing file: %s" % game.get("filepath"))
+                print("Error while parsing file: %s" % game.filepath)
                 continue
 
-            if (game.get("size") > 4000 and not args.iso) or args.ul:
+            if (game.size > 4000 and not args.iso) or args.ul:
                 print("Forced conversion to UL-Format...")
                 game = game.to_ULGameImage()
 
             game.set_metadata(self.api, args.rename)
-            game.dump()
+            game.print_data()
             
             # UL Format, when splitting, or whatever...
             if game.type == GameType.UL:
@@ -135,7 +134,7 @@ class POPLManager:
                 # Create OPL-Config for Game; read & merge ul.cfg
                 game.ulcfg = ULConfigGame(game=game)
                 cfg = ULConfig(os.path.join(args.opl_drive, "ul.cfg"), \
-                        {game.get("opl_id"): game.ulcfg})
+                        {game.opl_id: game.ulcfg})
 
                 print("Reading ul.cfg...")
                 cfg.read()
@@ -148,13 +147,13 @@ class POPLManager:
 
 	    # Otherwise copy iso to opl_drive, optimizing the name for OPL
             else:
-                if game.get("new_filename"):
-                    filename = game.get("new_filename")
+                if game.new_filename:
+                    filename = game.new_filename
                 else:
-                    filename = game.get("filename")
+                    filename = game.filename
 
-                filename += "." + game.get("filetype")
-                filepath = os.path.join(args.opl_drive, "DVD" if game.get("size") > 700 else "CD", filename)
+                filename += "." + game.filetype
+                filepath = os.path.join(args.opl_drive, "DVD" if game.size > 700 else "CD", filename)
 
                 print("Copy file to " + str(filepath) + ", please wait...")
                 if is_file(filepath) and not args.force:
@@ -164,7 +163,7 @@ class POPLManager:
                 elif args.force:
                     print("Overwriting forced!")
 
-                copyfile(game.get("filepath"), filepath)
+                copyfile(game.filepath, filepath)
  
             
             # Finally download artwork
@@ -192,9 +191,9 @@ class POPLManager:
                 print(f"Error while parsing file: {game.get('filepath')}")
                 continue
 
-            print("Fixing '%s'..." % game.get("filename"))
+            print("Fixing '%s'..." % game.filename)
 
-            if not game.get("id"):
+            if not game.id:
                 print(f"ID not found in file: {game.get('filepath')}")
                 continue
 
@@ -204,17 +203,15 @@ class POPLManager:
                 print("WARN: Couldn't get Metadata from API for '%s'" % game.filepath)
 
             # Generate OPL-ID & try evolving game-object to child class
-            #game.gen_opl_id()
-            tmp = game.evolve()
-            if tmp:
-                game = tmp
-            game.dump()
+            game.gen_opl_id()
+
+            game.print_data()
 
             # Change filename?
-            if not game.get("new_filename"):
-                filename = game.get("filename")
+            if not game.new_filename:
+                filename = game.filename
             else:
-                filename = game.get("new_filename")
+                filename = game.new_filename
 
             if isinstance(game, ULGameImage):
                 # TODO: 
@@ -223,19 +220,19 @@ class POPLManager:
                 #  - check existance of images, in ul.cfg
                 #  - write fixed ul.cfg
                 game.ulcfg = ULConfigGame(game=game) 
-                cfg = (args.opl_drive+"/ul.cfg", {game.get("opl_id"): game.ulcfg})
+                cfg = (args.opl_drive+"/ul.cfg", {game.opl_id: game.ulcfg})
 
                 #will override cfg for now if fixing stuff...
            
             # Game already in correct format?
-            if game.get("filename") == filename:
+            if game.filename == filename:
                 print("Nothing to do...")
                 continue
 
             # Move stuff
-            print("Renaming: %s -> %s" %(game.get("filename"), filename))
-            destfilepath=os.path.join(args.opl_drive, "DVD", filename + "." + game.get("filetype"))
-            move(game.get("filepath"), destfilepath)
+            print("Renaming: %s -> %s" %(game.filename, filename))
+            destfilepath=os.path.join(args.opl_drive, "DVD", filename + "." + game.filetype)
+            move(game.filepath, destfilepath)
 
     # List all Games on OPL-Drive
     def list(self, args):
@@ -243,18 +240,16 @@ class POPLManager:
         print("|-> ISO-Games:")
 
         # Find all game iso's
-        for media_file in self.__get_opl_games(args.opl_drive, type="DVD") + self.__get_opl_games(args.opl_drive, type="CD"):
-            game = Game(media_file)
-            game = game.evolve()
+        for game in self.__get_games(self.__get_opl_games(args.opl_drive, type="DVD") + self.__get_opl_games(args.opl_drive, type="CD")):
             game.get_filedata()
-#            game.gen_opl_id()
+            game.gen_opl_id()
 
             if args.online:
                 api = API()
                 game.set_metadata(api, args.rename)
             
             if isinstance(game, IsoGameImage):
-                print(" [%s] %s " %(game.get("opl_id"), game.get("title")))
+                print(" [%s] %s " %(game.opl_id, game.title))
 
         # Read ul.cfg & output games
         if os.path.exists(args.opl_drive + "ul.cfg"):

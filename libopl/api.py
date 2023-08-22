@@ -49,7 +49,7 @@ Example: http://github.com/Nold360/libopl/example.opl.ini
     # returns json-dict
     def get_metadata(self, title_id):
         if not self.enabled:
-            return False
+            return None
 
         try:
             r = requests.get(self.URL + title_id)

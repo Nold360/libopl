@@ -17,7 +17,7 @@ class Artwork():
     
     def set_filetype(self, filetype=None):
      if not filetype:
-       self.filetype = filename.split('/')[:1]
+       self.filetype = self.filename.split('/')[:1]
      else:
        self.filetype = filetype
      
