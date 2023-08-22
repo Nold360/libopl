@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 #from game import ULGameImage
+from typing import Dict
+from enum import Enum
 from libopl.common import usba_crc32
 
-# single game in ul.cfg / on filesyystem?
+class ULMediaType(Enum):
+    CD = b'\x12'
+    DVD = b'\x14'
+
+# single game in ul.cfg / on filesystem
 # ul.cfg is binary
 # 64byte per game
 class ULConfigGame():
@@ -10,22 +16,22 @@ class ULConfigGame():
 
     ######### Fields in ul.cfg per game (always 64byte)
     # 32byte - Title/Name of Game
-    name = '\0' * 32
+    name: bytes
 
-    # 22byte - region_code is "ul." + OPL_ID (aka ID/Serial of game)
-    region_code = None
+    # 14byte - region_code is "ul." + OPL_ID (aka ID/Serial of game)
+    region_code: bytes
 
-    # 2byte - Number of file chunks / parts 
-    parts = None
+    # 1byte - Number of file chunks / parts 
+    parts: bytes
 
-    # 2byte - media type?! so DVD/CD?...
-    media = '\0' * 2
+    # 1byte - media type?! so DVD/CD?...
+    media: ULMediaType
 
-    # 2byte - This guy is unknown according to usbutil..
-    unknown = '\0' * 2
+    # 1byte - This guy is unknown according to usbutil..
+    unknown: bytes
 
     # 15byte - Also unused afaik
-    remains = '\0' * 15
+    remains: bytes
 
     ######### This CRC32-Hash is used for the ul-filenames 
     # By hashing the "name"-bytes OPL finds the files, 
@@ -38,38 +44,28 @@ class ULConfigGame():
     def __init__(self, data=None, game=None):
         # data = from ul.cfg
         if data:
-            self.name = data[:32].decode("utf-8") 
-            self.region_code = data[32:46].decode("utf-8") 
+            self.name = bytes(data[:32])
+            self.region_code = bytes(data[32:46])
             self.parts = bytes([data[47]])
-            self.media = bytes([data[48]])
-            self.unknown = bytes([data[49]]).decode("utf8")
-            self.remains = data[49:64].decode("utf-8")
+            self.media = ULMediaType(bytes([data[48]]))
+            self.unknown = bytes([data[49]])
+            self.remains = bytes(data[49:64])
 
             self.opl_id = self.region_code[2:]
         # Create ul.cfg-entry for new game
         elif game:
             self.game = game
-            self.name = self.game.get("title")[:32]
-            self.opl_id = self.game.get("opl_id")
+            self.name = self.game.title[:32]
+            self.opl_id = self.game.opl_id
             self.region_code = "ul." + self.opl_id
-            self.parts = int(self.game.get("parts"))
+            self.parts = int(self.game.parts)
 
-            #FIXME: static media type.. matters?
-            self.media = b'\x14'
+            self.media = ULMediaType.DVD if game.size > 700 else ULMediaType.CD
             self.unknown = b'\x00'
         else: 
             return None
         #Generate CRC32 from title
-        self.crc32 = hex(usba_crc32(self.name))
-
-    # returns byte string + \0 padding defined by "size"
-    # converts string to bytestring if required
-    def __get_bytes(self, data, size):
-        if isinstance(data, int):
-            data = chr(data)
-        if isinstance(data, str):
-            data = bytes(data, 'utf-8')
-        return data.ljust(size, b'\0')
+        self.crc32 = hex(usba_crc32(self.name)).capitalize()
 
     # Get binary config data, with padding to 64byte
     def get_binary_data(self): 
@@ -78,22 +74,14 @@ class ULConfigGame():
         assert self.parts
         assert self.media
 
-        # FIXME: for var: if ! byte(var): get_bytes(var)
-        data =  self.__get_bytes(self.name.strip(), 32)
-        data += self.__get_bytes(self.region_code.strip(), 14)
-        data += self.__get_bytes(self.unknown, 1)
-        data += self.__get_bytes(self.parts, 1)
-        data += self.__get_bytes(self.media, 1)
-        data += self.__get_bytes(self.remains, 12)
+        data = self.name + self.region_code + self.parts + self.media + self.unknown + self.remains
 
-        return data.ljust(63, '\x00'.encode('utf-8'))
+        return data.ljust(64, b'\x00')
 
         
 # ul.cfg handling class
 class ULConfig():
-    # Hasharray:
-    #  OPL_ID: <ULConfigGame>
-    ulgames = {}
+    ulgames: Dict[bytes, ULConfigGame] = {}
     filepath = None
 
     # Generate ULconfig using ULGameConfig objects
@@ -104,43 +92,36 @@ class ULConfig():
 
         if filepath:
             self.filepath = filepath
+            self.read()
 
     # Add / Update Game using Game object
     def add_game(self, game):
-        self.ulgames.update({"ul."+game.get("id"): game.ulcfg})
+        self.ulgames.update({"ul."+game.id: game.ulcfg})
 
     # Add / Update Game using ul_ID & ULGameConfig object
-    def add_ulgame(self, ul_id, ulgame):
+    def add_ulgame(self, ul_id: str, ulgame: ULConfigGame):
         self.ulgames.update({ul_id: ulgame})
 
     # Print debug data
-    def dump(self):
+    def print_data(self):
         print("Filepath: " +  str(self.filepath))
         print("ULGames:")
         for game in self.ulgames:
-            print(" [%s] %s " % (str(game), str(self.ulgames[game].name)))
+            print(f" [{str(game)}] {str(self.ulgames[game].name)} ")
     
     # Read ul.cfg file
     def read(self):
-        try:
             with open(self.filepath, 'rb') as data:
-                while True:
-                    game_cfg = data.read(64)
-                    if len(game_cfg) == 0: break
+                game_cfg = data.read(64)
+                while game_cfg:
                     game = ULConfigGame(game_cfg)
                     self.ulgames.update({game.region_code: game})
-        except Exception as e:
-            print("Ooops: ")
-            print(e)
-            return False
-        return True
+                    game_cfg = data.read(64)
+
+        # return True
 
     # Write back games to ul.cfg
     def write(self):
-        if not self.filepath: 
-            return False
-
         with open(self.filepath, 'wb+') as cfg:
-            for id in self.ulgames:
-                cfg.write(self.ulgames[id].get_binary_data())
-        return True
+            for game in self.ulgames.values():
+                cfg.write(game.get_binary_data())

@@ -94,7 +94,8 @@ unsigned int USBA_crc32(char *string)
 
 # ^ That function in shitty python
 # Generate crc32 from game title for ul.cfg
-def usba_crc32(string):
+def usba_crc32(name: bytes):
+    name = name.strip(b'\x00')
     crctab = [0] * 1024
     crc = ctypes.c_int32()
     for table in range(0,256):
@@ -109,9 +110,9 @@ def usba_crc32(string):
         crctab[255 - table] = ctypes.c_uint32(crc).value
     
     c=0
-    string=string+"\0"
-    while c < len(string):
-        crc = ctypes.c_uint32(crctab[ord(string[c]) ^ ((crc >> 24) & 0xFF)] \
+    name += b'\x00'
+    while c < len(name):
+        crc = ctypes.c_uint32(crctab[name[c] ^ ((crc >> 24) & 0xFF)] \
                 ^ ((crc << 8) & 0xFFFFFF00)).value
         c+=1
     return ctypes.c_uint32(crc).value

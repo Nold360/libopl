@@ -2,10 +2,9 @@
 ###
 # Game Class
 # 
-import json
 from typing import List
 from libopl.artwork import Artwork
-from libopl.common import usba_crc32, slugify, is_file, read_in_chunks
+from libopl.common import slugify, is_file, read_in_chunks
 from enum import Enum
 from os import path
 
@@ -40,10 +39,10 @@ class Game():
     id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
     # Recover generate id from filename
-    def __init__(self, filepath=None, id=None, recover_id=True):
+    def __init__(self, filepath, id=None):
         if filepath:
             self.filepath = filepath
-            self.get_common_filedata(recover_id)
+            self.get_common_filedata()
         if id:
             self.id = id
             self.gen_opl_id()
@@ -93,11 +92,11 @@ Filepath:     {self.filepath}
                 return id[0]
         return None
 
-    # Set missing attributes using api metadata
+    # Set missing attributes using api metadata, returns False if it fails,
+    # True if it succeeds
     def set_metadata(self, api, override=False):
         if not self.id:
             return False
-
         try:
             meta = api.get_metadata(self.id)
             self.meta = meta
@@ -128,7 +127,7 @@ Filepath:     {self.filepath}
 
     # Getting usefill data from filename
     # for ul & iso names
-    def get_common_filedata(self, recover_id=True):
+    def get_common_filedata(self) -> None:
         self.filename = path.basename(self.filepath)
         self.filedir = path.dirname(self.filepath)
 
@@ -137,17 +136,16 @@ Filepath:     {self.filepath}
             self.type = GameType.ISO
 
         # try to get id out of filename
-        try:
-            self.id = self.id_regex.findall(self.filename)[0]
-        except:
-            #else try to recover
+        if (res := self.id_regex.findall(self.filename)):
+            self.id = res[0]
+        else:
             self.recover_id()
-        if not self.get('id'):
-            return False
+
+        if not self.id:
+            return 
 
         self.gen_opl_id()
         self.size = path.getsize(self.filepath)>>20
-        return True
 
 ####
 # UL-Format game, child-class of "Game"
@@ -160,13 +158,13 @@ class ULGameImage(Game):
     # Chunk size matched USBUtil
     CHUNK_SIZE = 1073741824
 
-    # Generate ULGameImage from filepath, ulcfg, or raw (meta-)data
-    def __init__(self, filepath=None, ulcfg=None, data=None):
+    # Generate ULGameImage from filepath or ulcfg
+    def __init__(self, filepath=None, ulcfg=None):
         # From file
         if filepath:
             super().__init__(filepath=filepath)
             self.get_filedata()
-        # FRom ul.cfg
+        # From ul.cfg
         elif ulcfg:
             self.ulcfg = ulcfg
             self.opl_id = self.ulcfg.region_code.replace('ul.', '')
@@ -175,13 +173,10 @@ class ULGameImage(Game):
             self.crc32 = self.ulcfg.crc32
             self.filename = "ul." + self.crc32.replace('0x', '').upper()
             self.filename = self.filename + "." + self.opl_id + ".00"
-        # Evolved from Game-Class
-        elif data:
-            self.data = data
         else: return None
 
-    # Try to parse a filename to usefull data
-    def get_filedata(self):
+    # Try to parse a filename to useful data
+    def get_filedata(self) -> None:
         self.filetype = None
 
         # Pattern: ul.{CRC32(title)}.{OPL_ID}.{PART}
@@ -190,46 +185,24 @@ class ULGameImage(Game):
 
         # Trim Title to 32chars
         self.title = self.title[:32]
-        
-        #self.crc32 = usba_crc32(self.title)
-        return True
 
-    # (Split) ISO into UL-Format
-    def to_UL(self, dest_path, force=False):
-        file_part = 0
-        with open(self.filepath, 'rb') as f:
-            chunk = f.read(ULGameImage.CHUNK_SIZE)
-            while chunk:
-                filename =  'ul.%s.%s.%.2X' % ( self.crc32[2:].upper(), \
-                            self.opl_id, file_part)
-                filepath = path.join(dest_path, filename)
-
-                if is_file(filepath) and not force:
-                    print("Warn: File '%s' already exists! Use -f to force overwrite." % filename)
-                    return 0
-
-                print("Writing File '%s'..." % filepath)
-                with open(filepath, 'wb') as outfile:
-                    outfile.write(chunk)
-                    file_part += 1 
-                    chunk = f.read(ULGameImage.CHUNK_SIZE)
-        self.parts = file_part
-        return file_part
 
 ####
 # Class for ISO-Games (or alike), child-class of "Game"
 class IsoGameImage(Game):
     type = GameType.ISO
+    title: str
+    filename: str
+    crc32: str
+
     # Create Game based on filepath
-    def __init__(self, filepath=None, data=None):
+    def __init__(self, filepath=None):
         if filepath:
             super().__init__(filepath)
             self.get_filedata() 
-        if data:
-            self.data = data
 
     # Get (meta-)data from filename
-    def get_filedata(self):
+    def get_filedata(self) -> None:
         self.filetype = "iso"
 
         # FIXME: Better title / id sub
@@ -237,4 +210,24 @@ class IsoGameImage(Game):
         self.title = self.title.replace("."+self.filetype, '')
         self.title = self.title.strip('._-\ ')
         self.filename = self.filename.replace("."+self.filetype, '')
-        self.crc32 = hex(usba_crc32(self.title))
+
+    # (Split) ISO into UL-Format, returns number of parts
+    #TODO: Build a good ISO to UL conversion pipeline, it's a bit weird atm
+    def to_UL(self, dest_path, force=False) -> int:
+        file_part = 0
+        with open(self.filepath, 'rb') as f:
+            chunk = f.read(ULGameImage.CHUNK_SIZE)
+            while chunk:
+                filename = f"ul.{self.crc32[2:].upper()}.{self.opl_id}.{format(file_part, '{:.2X}')}"
+                filepath = path.join(dest_path, filename)
+
+                if is_file(filepath) and not force:
+                    print(f"Warn: File '{filename}' already exists! Use -f to force overwrite.")
+                    return 0
+
+                print(f"Writing File '{filepath}'...")
+                with open(filepath, 'wb') as outfile:
+                    outfile.write(chunk)
+                    file_part += 1 
+                    chunk = f.read(ULGameImage.CHUNK_SIZE)
+        return file_part
