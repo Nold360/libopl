@@ -2,9 +2,10 @@
 ###
 # Game Class
 # 
+from functools import reduce
 from pathlib import Path
 from libopl.artwork import Artwork
-from libopl.common import slugify, is_file, read_in_chunks
+from libopl.common import get_iso_id, slugify, is_file, read_in_chunks, usba_crc32
 
 import re
 from typing import List
@@ -153,6 +154,8 @@ class ULGameImage(Game):
     # ULConfigGame object
     from libopl.ul import ULConfigGame
     ulcfg: ULConfigGame
+    filenames: List[Path]
+    size: float
     type: GameType = GameType.UL
     crc32: str
 
@@ -166,22 +169,36 @@ class ULGameImage(Game):
         self.id = self.opl_id
         self.title = self.ulcfg.name.decode('utf-8')
         self.crc32 = self.ulcfg.crc32
+        self.filenames = self.get_filenames()
+        self.size = self.get_size()
     
-    def get_filenames(self, opl_drive):
-        return [path.join(opl_drive, 
-                          f"ul.{self.crc32[2:].upper()}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
-                    for part in range(0, int(self.ulcfg.parts[0]))]
+    def get_filenames(self):
+        if hasattr(self, "filenames"):
+            return self.filenames
+        else:
+            self.filenames = [self.ulcfg.filedir.joinpath( 
+                                    f"ul.{self.crc32[2:].upper()}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
+                                    for part in range(0, int(self.ulcfg.parts[0]))]
+            return self.filenames
 
-    # TODO: Properly report any errors found
+    def get_size(self):
+        if hasattr(self, "size"):
+            return self.size
+        else: 
+            self.size = reduce(lambda x, y: x + y.stat().st_size / (1024 ^ 2), 
+                                     self.get_filenames(), 0)
+            return self.size
+
     def is_ok(self) -> bool:
         for file in self.get_filenames():
             if not path.isfile(file):
                 return False
         if len(self.title) > 32:
             return False
+        return True
     
     def delete_files(self, opl_drive) -> None:
-        for file in self.get_filenames(opl_drive):
+        for file in self.get_filenames():
             os.remove(file)
 
     def __repr__(self):
@@ -223,13 +240,19 @@ class IsoGameImage(Game):
 
     # (Split) ISO into UL-Format, returns number of parts
     #TODO: Build a good ISO to UL conversion pipeline, it's a bit weird atm
-    def to_UL(self, dest_path, force=False) -> int:
+    def to_UL(src_iso: Path, dest_path: Path, force=False) -> int:
         file_part = 0
-        with open(self.filepath, 'rb') as f:
+        with src_iso.open('rb') as f:
             chunk = f.read(ULGameImage.CHUNK_SIZE)
+            title = re.sub(r'.[iI][sS][oO]', '', src_iso.name)
+
             while chunk:
-                filename = f"ul.{self.crc32[2:].upper()}.{self.opl_id}.{format(file_part, '{:.2X}')}"
-                filepath = path.join(dest_path, filename)
+                crc32 = hex(usba_crc32(title.encode('ascii')))[2:].upper()
+                game_id = get_iso_id(src_iso)
+                part = hex(file_part)[2:4].zfill(2).upper()
+
+                filename = f"ul.{crc32}.{game_id}.{part}"
+                filepath = dest_path.joinpath(filename)
 
                 if is_file(filepath) and not force:
                     print(f"Warn: File '{filename}' already exists! Use -f to force overwrite.")

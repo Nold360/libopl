@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 #from game import ULGameImage
+import math
 import os
+import re
 from typing import Dict
 from enum import Enum
 from pathlib import Path
-from libopl.common import usba_crc32
+from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso
 
 class ULMediaType(Enum):
     CD = b'\x12'
@@ -44,7 +46,7 @@ class ULConfigGame():
 
     def __init__(self,filedir,data):
         from libopl.game import ULGameImage 
-        self.filedir = Path(filedir)
+        self.filedir = filedir
         self.name = bytes(data[:32])
         self.crc32 = hex(usba_crc32(self.name)).capitalize()
         self.region_code = bytes(data[32:46])
@@ -76,16 +78,38 @@ class ULConfig():
 
     # Generate ULconfig using ULGameConfig objects
     # Or Read ULConfig from filepath
-    def __init__(self, filepath=None, ulgames=None):
-        if ulgames:
-            self.ulgames = ulgames
-        elif filepath:
+    def __init__(self, filepath):
+        if filepath:
             self.filepath = filepath
             self.read()
 
     # Add / Update Game using Game object
-    def add_game(self, game):
-        self.ulgames.update({"ul."+game.id: game.ulcfg})
+    def add_game_from_iso(self, src_iso: Path, force: bool):
+        title: bytes = re.sub(r'.[iI][sS][oO]', '', src_iso.name).encode('ascii')
+        game_size = src_iso.stat().st_size / 1024 ** 2
+
+        if len(title) > 32:
+            raise ValueError(f"Title length for game \'{title}\' is longer than 32 characters")
+
+        title = title.ljust(32, b'\x00')
+        region_code = (b'ul.' + get_iso_id(src_iso).encode('ascii')).ljust(14, b'\x00')
+        unknown = b'\x00'
+        parts = chr(math.ceil(game_size * 1024 ** 2 / 1073741824)).encode('ascii')
+        media = b'\x12' if src_iso.stat().st_size / 1024 ** 2 <= 700 else b'\x14'
+        remaining = b'\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+       
+        install_dir = self.filepath.parent
+        data = title + region_code + unknown + parts + media + remaining
+
+        ul_files_from_iso(src_iso, install_dir, force)
+        config = ULConfigGame(install_dir, data)
+        if config.game.is_ok():
+            self.add_ulgame(region_code, config)
+            self.write()
+        else:
+            raise IOError(f"Files could not be created for game \'{title.decode('ascii')}\'")
+
+
 
     # Add / Update Game using ul_ID & ULGameConfi/g object
     def add_ulgame(self, ul_id: str, ulgame: ULConfigGame):
@@ -103,7 +127,7 @@ class ULConfig():
             with open(self.filepath, 'rb') as data:
                 game_cfg = data.read(64)
                 while game_cfg:
-                    game = ULConfigGame(data=game_cfg, filedir=os.path.dirname(self.filepath))
+                    game = ULConfigGame(data=game_cfg, filedir=self.filepath.parent)
                     self.ulgames.update({game.region_code: game})
                     game_cfg = data.read(64)
 

@@ -60,6 +60,32 @@ def get_iso_id(filepath: Path) -> str:
                 return id[0]
     raise ValueError(f"Cannot find Game ID for ISO file '{filepath}'")
 
+def ul_files_from_iso(src_iso: Path, dest_path: Path, force=False) -> int:
+    CHUNK_SIZE = 1073741824
+
+    file_part = 0
+    with src_iso.open('rb') as f:
+        chunk = f.read(CHUNK_SIZE)
+        title = re.sub(r'.[iI][sS][oO]', '', src_iso.name)
+
+        while chunk:
+            crc32 = hex(usba_crc32(title.encode('ascii')))[2:].upper()
+            game_id = get_iso_id(src_iso)
+            part = hex(file_part)[2:4].zfill(2).upper()
+
+            filename = f"ul.{crc32}.{game_id}.{part}"
+            filepath = dest_path.joinpath(filename)
+
+            if is_file(filepath) and not force:
+                print(f"Warn: File '{filename}' already exists! Use -f to force overwrite.")
+                return 0
+
+            print(f"Writing File '{filepath}'...")
+            with open(filepath, 'wb') as outfile:
+                outfile.write(chunk)
+                file_part += 1 
+                chunk = f.read(CHUNK_SIZE)
+    return file_part
 """
 Normalizes string, **DOESN'T** converts to lowercase, removes non-alpha characters,
 

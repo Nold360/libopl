@@ -21,12 +21,20 @@
             "args": ["delete", "~/Documents/PS2SMB/", "SLES_556.66"]
         },
         {
-            "name": "Install PES 2013",
+            "name": "Install PES 2013 as ISO",
             "type": "python",
             "request": "launch",
             "module": "libopl",
             "justMyCode": true,
             "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
+        },
+        {
+            "name": "Install PES 2013 as UL",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["add", "--ul", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
         },
         {
             "name": "Fix games",
