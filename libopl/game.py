@@ -64,10 +64,10 @@ Filepath:     {self.filepath}
 """
 
     def __str__(self):
-        return self.__repr__() 
+        return f"[{self.opl_id}] {self.title}"
     
     def print_data(self):
-        print(str(self))
+        print(repr(self))
     
     # Generate Serial/ID in OPL-Format
     def gen_opl_id(self):
@@ -162,15 +162,15 @@ class ULGameImage(Game):
     # Generate ULGameImage from ulcfg
     def __init__(self, ulcfg: ULConfigGame):
         self.ulcfg = ulcfg
-        self.opl_id = self.ulcfg.region_code.replace(b'ul.', b'')
+        self.opl_id = self.ulcfg.region_code.replace(b'ul.', b'').decode('utf-8')
         self.id = self.opl_id
-        self.title = self.ulcfg.name
+        self.title = self.ulcfg.name.decode('utf-8')
         self.crc32 = self.ulcfg.crc32
     
-    def get_filenames(self):
-        return [path.join(self.filedir, 
-                          f"ul.{self.crc32}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
-                    for part in range(0, self.ulcfg.parts)]
+    def get_filenames(self, opl_drive):
+        return [path.join(opl_drive, 
+                          f"ul.{self.crc32[2:].upper()}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
+                    for part in range(0, int(self.ulcfg.parts[0]))]
 
     # TODO: Properly report any errors found
     def is_ok(self) -> bool:
@@ -180,10 +180,22 @@ class ULGameImage(Game):
         if len(self.title) > 32:
             return False
     
-    def delete_files(self) -> None:
-        for file in self.get_filenames():
+    def delete_files(self, opl_drive) -> None:
+        for file in self.get_filenames(opl_drive):
             os.remove(file)
-    
+
+    def __repr__(self):
+        return f"""\n----------------------------------------
+LANG=en_US.UTF-8OPL-ID:       {self.opl_id}
+Size (MB):    {self.size} 
+Title:    {self.title} 
+
+Game type:     UL
+Game dir:      {self.filedir}
+CRC32:        {self.crc32}
+ID:           {self.id} 
+Filepath:     {self.filepath}
+"""
             
 ####
 # Class for ISO-Games (or alike), child-class of "Game"

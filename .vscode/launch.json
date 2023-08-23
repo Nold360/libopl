@@ -5,12 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Module",
+            "name": "List Games",
             "type": "python",
             "request": "launch",
             "module": "libopl",
             "justMyCode": true,
             "args": ["list", "~/Documents/PS2SMB/"]
+        },
+        {
+            "name": "Delete PES 2013",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["delete", "~/Documents/PS2SMB/", "SLES_556.66"]
         }
     ]
 }

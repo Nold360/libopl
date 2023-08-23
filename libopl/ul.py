@@ -23,16 +23,15 @@ class ULConfigGame():
     # 14byte - region_code is "ul." + OPL_ID (aka ID/Serial of game)
     region_code: bytes
 
+    # 1byte - According to USBUtil, "DESC"
+    unknown: bytes
     # 1byte - Number of file chunks / parts 
     parts: bytes
 
     # 1byte - media type?! so DVD/CD?...
     media: ULMediaType
 
-    # 1byte - This guy is unknown according to usbutil..
-    unknown: bytes
-
-    # 15byte - Also unused afaik
+    # 15byte - According to USBUtil, simply named "Information"
     remains: bytes
 
     ######### This CRC32-Hash is used for the ul-filenames 
@@ -45,17 +44,16 @@ class ULConfigGame():
 
     def __init__(self,filedir,data):
         from libopl.game import ULGameImage 
-        print(filedir)
         self.filedir = Path(filedir)
         self.name = bytes(data[:32])
         self.crc32 = hex(usba_crc32(self.name)).capitalize()
         self.region_code = bytes(data[32:46])
+        self.unknown = bytes([data[46]])
         self.parts = bytes([data[47]])
         self.media = ULMediaType(bytes([data[48]]))
-        self.unknown = bytes([data[49]])
         self.remains = bytes(data[49:64])
 
-        self.opl_id = self.region_code[2:]
+        self.opl_id = self.region_code[3:]
         self.game = ULGameImage(ulcfg=self)
 
     # Get binary config data, with padding to 64byte
@@ -65,7 +63,8 @@ class ULConfigGame():
         assert self.parts
         assert self.media
 
-        data = self.name + self.region_code + self.parts + self.media + self.unknown + self.remains
+        data = self.name[:32] + \
+               self.region_code + self.unknown + self.parts + self.media.value + self.remains
 
         return data.ljust(64, b'\x00')
 
@@ -73,15 +72,14 @@ class ULConfigGame():
 # ul.cfg handling class
 class ULConfig():
     ulgames: Dict[bytes, ULConfigGame] = {}
-    filepath = None
+    filepath: Path = None
 
     # Generate ULconfig using ULGameConfig objects
     # Or Read ULConfig from filepath
     def __init__(self, filepath=None, ulgames=None):
         if ulgames:
             self.ulgames = ulgames
-
-        if filepath:
+        elif filepath:
             self.filepath = filepath
             self.read()
 

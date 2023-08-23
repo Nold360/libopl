@@ -48,6 +48,9 @@ def config(section, key, filepath=str(Path.home())+"/.config/opl.ini"):
     return None
 
 
+def path_to_ul_cfg(opl_dir: Path) -> Path:
+    return opl_dir.joinpath('ul.cfg')
+
 """
 Normalizes string, **DOESN'T** converts to lowercase, removes non-alpha characters,
 
