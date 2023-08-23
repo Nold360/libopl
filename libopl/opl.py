@@ -106,9 +106,12 @@ class POPLManager:
             if game.opl_id == args.opl_id[0]:
                 match game.type:
                     case GameType.UL:
+                        print(f"Deleting {args.opl_id[0]}...")
                         ul_cfg = ULConfig(path_to_ul_cfg(args.opl_drive))
                         ul_cfg.ulgames.pop(game.ulcfg.region_code, None)
+                        print("Adjusting ul.cfg...")
                         ul_cfg.write()
+                        print('Deleting game chunks...')
                         game.delete_files(args.opl_drive)
                     case GameType.ISO:
                         if os.path.exists(fp := game.filepath):
