@@ -27,6 +27,14 @@
             "module": "libopl",
             "justMyCode": true,
             "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
+        },
+        {
+            "name": "Fix games",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["fix", "~/Documents/PS2SMB/"]
         }
     ]
 }

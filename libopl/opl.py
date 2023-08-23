@@ -17,13 +17,6 @@ import re
 import sys
 import argparse
 
-# todo
-# config file ~/.config/popl.yml
-# recover media_id from iso file
-# TODO:
-#   popl init /media/opl_drive!!!
-
-
 class POPLManager:
     args = None
     opl_drive: Path
@@ -167,58 +160,61 @@ class POPLManager:
     #  - Download missing artwork / overwrite existing
     def fix(self, args):
         self.api = API()
-        self.__get_games(self.__get_iso_game_files(args.opl_drive))
+        # self.__get_games(self.__get_iso_game_files(args.opl_drive))
 
         # FIXME: No merge, full overwrite..?
-        self.ulcfg = ULConfig(args.opl_drive.joinpath("ul.cfg"))
+        # self.ulcfg = ULConfig(args.opl_drive.joinpath("ul.cfg"))
 
-        for game in self.__get_games(self.__get_iso_game_files(args.opl_drive)):
-            if not game.get('id'):
-                print(f"Error while parsing file: {game.get('filepath')}")
-                continue
-
-            print("Fixing '%s'..." % game.filename)
-
+        for game in self.__get_full_game_list():
             if not game.id:
-                print(f"ID not found in file: {game.get('filepath')}")
+                print(f"Error while parsing file: {game.filepath}")
                 continue
+            
+            match game.type:
+                case GameType.ISO:
+                    game_name_regex = re.compile(r"^S[a-zA-Z]{3}.?\d{3}\.?\d{2}\.{1,32}")
+                    if not game_name_regex.findall(game.filename):
+                        # continue
+                        print(f"Fixing \'{game.filename}\'...")
+                        # continue
+                        game.filepath = game.filepath.rename(
+                            game.filepath.parent.joinpath(f"{game.id}.{game.filename}.iso")
+                            )
+                        game.filename = game.filepath.name            
+                        game.gen_opl_id()
+                        game.print_data()
+                case GameType.UL:
+                    pass
+
 
             # Always use API to fix game names
             # if not game.set_metadata(self.api, True):
             #     print("WARN: Couldn't get Metadata from API for '%s'" % game.filepath)
 
             # Generate OPL-ID
-            game.gen_opl_id()
 
-            game.print_data()
 
-            # Change filename?
-            if not game.new_filename:
-                filename = game.filename
-            else:
-                filename = game.new_filename
+            # if isinstance(game, ULGameImage):
+            #     # TODO:
+            #     #  - Search ul-games on disk
+            #     #  - read ul.cfg
+            #     #  - check existance of images, in ul.cfg
+            #     #  - write fixed ul.cfg
+            #     game.ulcfg = ULConfigGame(game=game)
+            #     cfg = (args.opl_drive.joinpath("ul.cfg"), {game.opl_id: game.ulcfg})
 
-            if isinstance(game, ULGameImage):
-                # TODO:
-                #  - Search ul-games on disk
-                #  - read ul.cfg
-                #  - check existance of images, in ul.cfg
-                #  - write fixed ul.cfg
-                game.ulcfg = ULConfigGame(game=game)
-                cfg = (args.opl_drive.joinpath("ul.cfg"), {game.opl_id: game.ulcfg})
+            #     # will override cfg for now if fixing stuff...
 
-                # will override cfg for now if fixing stuff...
+            # # Game already in correct format?
+            # if game.filename == filename:
+            #     print("Nothing to do...")
+            #     continue
 
-            # Game already in correct format?
-            if game.filename == filename:
-                print("Nothing to do...")
-                continue
-
-            # Move stuff
-            print("Renaming: %s -> %s" % (game.filename, filename))
-            destfilepath = os.path.join(
-                args.opl_drive, "DVD", filename + "." + game.filetype)
-            move(game.filepath, destfilepath)
+            # # Move stuff
+            # print("Renaming: %s -> %s" % (game.filename, filename))
+            # destfilepath = os.path.join(
+            #     args.opl_drive, "DVD", filename + "." + game.filetype)
+            # move(game.filepath, destfilepath)
 
     # List all Games on OPL-Drive
     def list(self, args):

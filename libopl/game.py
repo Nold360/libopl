@@ -2,6 +2,7 @@
 ###
 # Game Class
 # 
+from pathlib import Path
 from libopl.artwork import Artwork
 from libopl.common import slugify, is_file, read_in_chunks
 
@@ -24,7 +25,7 @@ class Game():
     filedir: str 
     filename: str 
     filetype: str 
-    filepath: str 
+    filepath: Path 
     id: str
     opl_id: str 
     artwork: List[Artwork]
@@ -41,7 +42,7 @@ class Game():
     # Recover generate id from filename
     def __init__(self, filepath, id=None):
         if filepath:
-            self.filepath = filepath
+            self.filepath = Path(filepath)
             self.get_common_filedata()
         if id:
             self.id = id
@@ -57,7 +58,6 @@ Filename:     {self.filename}
 
 Filetype:     {self.filetype}
 Filedir:      {self.filedir}
-CRC32:        {self.crc32}
 Type:         {self.type}
 ID:           {self.id} 
 Filepath:     {self.filepath}
@@ -119,7 +119,7 @@ Filepath:     {self.filepath}
                 self.title = slugify(self.meta["name"][:32])
             except: pass
             
-        self.filename = self.opl_id + "." + self.title
+        # self.filename = self.opl_id + "." + self.title
 
         return True 
         #new_filename = self.filename[:64-len(".iso")]
