@@ -8,7 +8,7 @@ from pathlib import Path
 import glob
 
 from libopl.api import API
-from libopl.common import is_file, is_dir, path_to_ul_cfg 
+from libopl.common import is_file, is_dir, path_to_ul_cfg, get_iso_id
 from libopl.game import Game, ULGameImage, IsoGameImage, GameType
 from libopl.ul import ULConfig, ULConfigGame
 
@@ -127,67 +127,35 @@ class POPLManager:
     def add(self, args):
         self.api = API()
 
-        for game in self.__get_games(args.src_file):
-            if not game.get('id'):
-                print("Error while parsing file: %s" % game.filepath)
-                continue
+        for game_path in args.src_file:
+            game_path:Path = game_path
+            # Game size in MB
+            game_size = game_path.stat().st_size / 1024 ** 2
+            if (game_size > 4000 and not args.iso) or args.ul:
+                raise NotImplementedError("Cannot add UL games yet")
 
-            if (game.size > 4000 and not args.iso) or args.ul:
-                print("Forced conversion to UL-Format...")
-                game = game.to_ULGameImage()
-
-            game.set_metadata(self.api, args.rename)
-            game.print_data()
-
-            # UL Format, when splitting, or whatever...
-            if game.type == GameType.UL:
-                print("Adding file in UL-Format...")
-
-                fileparts = game.to_UL(args.opl_drive, args.force)
-                if fileparts == 0:
-                    print("Something went wrong, skipping game '%s'!" %
-                          game.get('filename'))
-                    continue
-
-                # Create OPL-Config for Game; read & merge ul.cfg
-                game.ulcfg = ULConfigGame(game=game)
-                cfg = ULConfig(os.path.join(args.opl_drive, "ul.cfg"),
-                               {game.opl_id: game.ulcfg})
-
-                print("Reading ul.cfg...")
-                cfg.read()
-                cfg.print_data()
-
-                print("Writing ul.cfg...")
-                cfg.write()
-
-                print("Done! - Happy Gaming! :)")
-
-            # Otherwise copy iso to opl_drive, optimizing the name for OPL
             else:
-                if game.new_filename:
-                    filename = game.new_filename
-                else:
-                    filename = game.filename
-
-                filename += "." + game.filetype
-                filepath = os.path.join(
-                    args.opl_drive, "DVD" if game.size > 700 else "CD", filename)
-
-                print("Copy file to " + str(filepath) + ", please wait...")
-                if is_file(filepath) and not args.force:
-                    print("Warn: File '%s' already exists! Use -f to force overwriting." %
-                          game.get('filename'))
-                    print('Skipping game...')
+                iso_id = get_iso_id(game_path)
+                if not all(map(lambda x: x.id != iso_id
+                               , self.__get_all_iso_games())) and not args.force:
+                    print(f"Game with ID \'{iso_id}\' is already installed, skipping...")
+                    print("Use the -f flag to force the installation of this game")
                     continue
-                elif args.force:
-                    print("Overwriting forced!")
+                else:
+                    if len(title := str.split(game_path.name, '.')[0]) > 32:
+                        print(f"Game title \'{title}\' is longer than 32 characters, skipping...")
+                        continue
+                    new_game_path: Path = args.opl_drive.joinpath(
+                        "DVD" if game_size > 700 else "CD",
+                        f"{iso_id}.{game_path.name}")
 
-                copyfile(game.filepath, filepath)
+                    print(f"Copying game to \'{new_game_path}\', please wait...")
+                    copyfile(game_path, new_game_path)
+                    print("Done!")
 
             # Finally download artwork
-            print("Downloading Artwork...")
-            self.api.download_artwork(game, args.opl_drive)
+            # print("Downloading Artwork...")
+            # self.api.download_artwork(game, args.opl_drive)
 
     def __get_data_from_api(self, title_id):
         if not self.api:
@@ -318,7 +286,8 @@ def __main__():
         "opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
         type=lambda x: Path(x))
     add_parser.add_argument("src_file", nargs='+',
-                            help="Media/ISO Source File")
+                            help="Media/ISO Source File",
+                            type=lambda file: Path(file))
     add_parser.set_defaults(func=opl.add)
 
     art_parser = subparsers.add_parser(

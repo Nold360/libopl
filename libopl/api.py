@@ -32,17 +32,18 @@ class API():
     def __init__(self):
         self.URL=config("API", "URL")
         self.STATIC_URL=config("API", "STATIC_URL")
+        self.enabled = False
             
-        if not self.URL or not self.STATIC_URL:
-            print("""
-Info: API is not configured! Downloading artwork 
-& renaming/fixing of images will be disabled.
-Please create a ~/.config/opl.ini
+#         if not self.URL or not self.STATIC_URL:
+#             print("""
+# Info: API is not configured! Downloading artwork 
+# & renaming/fixing of images will be disabled.
+# Please create a ~/.config/opl.ini
 
-Example: http://github.com/Nold360/libopl/example.opl.ini
-""")
-        else:
-            self.enabled = True
+# Example: http://github.com/Nold360/libopl/example.opl.ini
+# """)
+#         else:
+#             self.enabled = True
             
 
     # Get metadata for title_id

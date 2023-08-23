@@ -51,6 +51,15 @@ def config(section, key, filepath=str(Path.home())+"/.config/opl.ini"):
 def path_to_ul_cfg(opl_dir: Path) -> Path:
     return opl_dir.joinpath('ul.cfg')
 
+def get_iso_id(filepath: Path) -> str:
+    id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
+    with open(filepath, 'rb') as f:
+        for chunk in read_in_chunks(f):
+            id = id_regex.findall(str(chunk))
+            if len(id) > 0:
+                return id[0]
+    raise ValueError(f"Cannot find Game ID for ISO file '{filepath}'")
+
 """
 Normalizes string, **DOESN'T** converts to lowercase, removes non-alpha characters,
 

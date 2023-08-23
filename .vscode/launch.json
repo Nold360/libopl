@@ -19,6 +19,14 @@
             "module": "libopl",
             "justMyCode": true,
             "args": ["delete", "~/Documents/PS2SMB/", "SLES_556.66"]
+        },
+        {
+            "name": "Install PES 2013",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
         }
     ]
 }
