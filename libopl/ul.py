@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 #from game import ULGameImage
+import os
 from typing import Dict
 from enum import Enum
+from pathlib import Path
 from libopl.common import usba_crc32
 
 class ULMediaType(Enum):
@@ -12,7 +14,7 @@ class ULMediaType(Enum):
 # ul.cfg is binary
 # 64byte per game
 class ULConfigGame():
-    filedir = None
+    filedir: Path = None
 
     ######### Fields in ul.cfg per game (always 64byte)
     # 32byte - Title/Name of Game
@@ -41,31 +43,20 @@ class ULConfigGame():
     # For Game object
     game = None
 
-    def __init__(self, data=None, game=None):
-        # data = from ul.cfg
-        if data:
-            self.name = bytes(data[:32])
-            self.region_code = bytes(data[32:46])
-            self.parts = bytes([data[47]])
-            self.media = ULMediaType(bytes([data[48]]))
-            self.unknown = bytes([data[49]])
-            self.remains = bytes(data[49:64])
-
-            self.opl_id = self.region_code[2:]
-        # Create ul.cfg-entry for new game
-        elif game:
-            self.game = game
-            self.name = self.game.title[:32]
-            self.opl_id = self.game.opl_id
-            self.region_code = "ul." + self.opl_id
-            self.parts = int(self.game.parts)
-
-            self.media = ULMediaType.DVD if game.size > 700 else ULMediaType.CD
-            self.unknown = b'\x00'
-        else: 
-            return None
-        #Generate CRC32 from title
+    def __init__(self,filedir,data):
+        from libopl.game import ULGameImage 
+        print(filedir)
+        self.filedir = Path(filedir)
+        self.name = bytes(data[:32])
         self.crc32 = hex(usba_crc32(self.name)).capitalize()
+        self.region_code = bytes(data[32:46])
+        self.parts = bytes([data[47]])
+        self.media = ULMediaType(bytes([data[48]]))
+        self.unknown = bytes([data[49]])
+        self.remains = bytes(data[49:64])
+
+        self.opl_id = self.region_code[2:]
+        self.game = ULGameImage(ulcfg=self)
 
     # Get binary config data, with padding to 64byte
     def get_binary_data(self): 
@@ -98,7 +89,7 @@ class ULConfig():
     def add_game(self, game):
         self.ulgames.update({"ul."+game.id: game.ulcfg})
 
-    # Add / Update Game using ul_ID & ULGameConfig object
+    # Add / Update Game using ul_ID & ULGameConfi/g object
     def add_ulgame(self, ul_id: str, ulgame: ULConfigGame):
         self.ulgames.update({ul_id: ulgame})
 
@@ -114,7 +105,7 @@ class ULConfig():
             with open(self.filepath, 'rb') as data:
                 game_cfg = data.read(64)
                 while game_cfg:
-                    game = ULConfigGame(game_cfg)
+                    game = ULConfigGame(data=game_cfg, filedir=os.path.dirname(self.filepath))
                     self.ulgames.update({game.region_code: game})
                     game_cfg = data.read(64)
 

@@ -2,23 +2,23 @@
 ###
 # Game Class
 # 
-from typing import List
 from libopl.artwork import Artwork
 from libopl.common import slugify, is_file, read_in_chunks
-from enum import Enum
-from os import path
 
 import re
-
-from libopl.ul import ULConfigGame
+from typing import List
+from enum import Enum
+from os import path
+import os
 
 class GameType(Enum):
-    UL = "ul (USBExtreme)"
-    ISO = "iso"
+    UL = "UL (USBExtreme)"
+    ISO = "ISO"
 
 class Game():
     # constant values for gametypes
     type: GameType = None
+
     ulcfg = None
 
     filedir: str 
@@ -82,26 +82,26 @@ Filepath:     {self.filepath}
 
     def recover_id(self):
         print('Trying to recover Media-ID...')
-        f = open(self.filepath, 'rb')
-        for chunk in read_in_chunks(f):
-            id = self.id_regex.findall(str(chunk))
-            if len(id) > 0:
-                print('Success: %s' % id[0])
-                self.id = id[0]
-                self.gen_opl_id()
-                return id[0]
+        with open(self.filepath, 'rb') as f:
+            for chunk in read_in_chunks(f):
+                id = self.id_regex.findall(str(chunk))
+                if len(id) > 0:
+                    print('Success: %s' % id[0])
+                    self.id = id[0]
+                    self.gen_opl_id()
+                    return id[0]
         return None
 
     # Set missing attributes using api metadata, returns False if it fails,
     # True if it succeeds
     def set_metadata(self, api, override=False):
         if not self.id:
-            return False
+            return 
         try:
             meta = api.get_metadata(self.id)
             self.meta = meta
         except:
-            return False
+            return 
         
         self.src_title = self.title
         if self.meta:
@@ -151,6 +151,7 @@ Filepath:     {self.filepath}
 # UL-Format game, child-class of "Game"
 class ULGameImage(Game):
     # ULConfigGame object
+    from libopl.ul import ULConfigGame
     ulcfg: ULConfigGame
     type: GameType = GameType.UL
     crc32: str
@@ -158,35 +159,32 @@ class ULGameImage(Game):
     # Chunk size matched USBUtil
     CHUNK_SIZE = 1073741824
 
-    # Generate ULGameImage from filepath or ulcfg
-    def __init__(self, filepath=None, ulcfg=None):
-        # From file
-        if filepath:
-            super().__init__(filepath=filepath)
-            self.get_filedata()
-        # From ul.cfg
-        elif ulcfg:
-            self.ulcfg = ulcfg
-            self.opl_id = self.ulcfg.region_code.replace('ul.', '')
-            self.id = self.opl_id
-            self.title = self.ulcfg.name
-            self.crc32 = self.ulcfg.crc32
-            self.filename = "ul." + self.crc32.replace('0x', '').upper()
-            self.filename = self.filename + "." + self.opl_id + ".00"
-        else: return None
+    # Generate ULGameImage from ulcfg
+    def __init__(self, ulcfg: ULConfigGame):
+        self.ulcfg = ulcfg
+        self.opl_id = self.ulcfg.region_code.replace(b'ul.', b'')
+        self.id = self.opl_id
+        self.title = self.ulcfg.name
+        self.crc32 = self.ulcfg.crc32
+    
+    def get_filenames(self):
+        return [path.join(self.filedir, 
+                          f"ul.{self.crc32}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
+                    for part in range(0, self.ulcfg.parts)]
 
-    # Try to parse a filename to useful data
-    def get_filedata(self) -> None:
-        self.filetype = None
-
-        # Pattern: ul.{CRC32(title)}.{OPL_ID}.{PART}
-        parts = self.filename.split('.')
-        self.crc32 = parts[1]
-
-        # Trim Title to 32chars
-        self.title = self.title[:32]
-
-
+    # TODO: Properly report any errors found
+    def is_ok(self) -> bool:
+        for file in self.get_filenames():
+            if not path.isfile(file):
+                return False
+        if len(self.title) > 32:
+            return False
+    
+    def delete_files(self) -> None:
+        for file in self.get_filenames():
+            os.remove(file)
+    
+            
 ####
 # Class for ISO-Games (or alike), child-class of "Game"
 class IsoGameImage(Game):
