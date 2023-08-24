@@ -9,18 +9,6 @@ import configparser
 import unicodedata
 import re
 
-
-def is_file(filepath):
-    return path.isfile(filepath)
-
-def is_dir(dirpath):
-    return path.isdir(dirpath)
-
-def exists(filepath):
-    if is_dir(filepath) or is_file(filepath):
-        return True
-    return False
-
 def read_in_chunks(file_object, chunk_size=1024):
     """Lazy function (generator) to read a file piece by piece.
     Default chunk size: 1k."""
@@ -29,24 +17,6 @@ def read_in_chunks(file_object, chunk_size=1024):
         if not data:
             break
         yield data
-
-# Read configuration file
-######
-# Configuration Class for libopl
-# Reads config file located at /home/$(whoami)/.config/opl.ini
-#
-def config(section, key, filepath=str(Path.home())+"/.config/opl.ini"):
-    if is_file(filepath):
-        config = configparser.ConfigParser()
-        try:
-            config.read(filepath)
-            return config[section][key]
-        except Exception as e:
-            print("Error: Couldn't read config file %s" % filepath)
-            print(e)
-            return None
-    return None
-
 
 def path_to_ul_cfg(opl_dir: Path) -> Path:
     return opl_dir.joinpath('ul.cfg')
@@ -76,7 +46,7 @@ def ul_files_from_iso(src_iso: Path, dest_path: Path, force=False) -> int:
             filename = f"ul.{crc32}.{game_id}.{part}"
             filepath = dest_path.joinpath(filename)
 
-            if is_file(filepath) and not force:
+            if filepath.is_file() and not force:
                 print(f"Warn: File '{filename}' already exists! Use -f to force overwrite.")
                 return 0
 
@@ -97,8 +67,7 @@ def slugify(value, allow_unicode=False):
             value = unicodedata.normalize('NFKC', value)
         else:
             value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-            value = re.sub(r'[^\w\s-]', '', value).strip()#.lower()
-            #return re.sub(r'[-\s]+', '_', value)
+            value = re.sub(r'[^\w\s-]', '', value).strip()
             return value
 
 

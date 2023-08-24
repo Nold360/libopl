@@ -78,10 +78,12 @@ class ULConfig():
 
     # Generate ULconfig using ULGameConfig objects
     # Or Read ULConfig from filepath
-    def __init__(self, filepath):
-        if filepath:
-            self.filepath = filepath
+    def __init__(self, filepath: Path):
+        self.filepath = filepath
+        if filepath.exists():
             self.read()
+        else:
+            filepath.touch(777)
 
     # Add / Update Game using Game object
     def add_game_from_iso(self, src_iso: Path, force: bool):

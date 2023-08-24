@@ -43,6 +43,20 @@
             "module": "libopl",
             "justMyCode": true,
             "args": ["fix", "~/Documents/PS2SMB/"]
+        },
+        {
+            "name": "Install Crash Bandicoot in USB",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "args": ["add", "--ul", "/run/media/edish/USB", "~/Documents/PS2SMB/CD/SLES_503.86.Crash Bandicoot TWOC.iso"]
+        },
+        {
+            "name": "Init directory structure on USB",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "args": ["init", "/run/media/edish/USB"]
         }
     ]
 }

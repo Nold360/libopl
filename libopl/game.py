@@ -4,8 +4,7 @@
 # 
 from functools import reduce
 from pathlib import Path
-from libopl.artwork import Artwork
-from libopl.common import get_iso_id, slugify, is_file, read_in_chunks, usba_crc32
+from libopl.common import get_iso_id, slugify, read_in_chunks, usba_crc32
 
 import re
 from typing import List
@@ -29,7 +28,6 @@ class Game():
     filepath: Path 
     id: str
     opl_id: str 
-    artwork: List[Artwork]
     title: str 
     crc32: str 
     size: float
@@ -254,7 +252,7 @@ class IsoGameImage(Game):
                 filename = f"ul.{crc32}.{game_id}.{part}"
                 filepath = dest_path.joinpath(filename)
 
-                if is_file(filepath) and not force:
+                if filepath.is_file() and not force:
                     print(f"Warn: File '{filename}' already exists! Use -f to force overwrite.")
                     return 0
 
