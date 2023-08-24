@@ -42,14 +42,14 @@
             "request": "launch",
             "module": "libopl",
             "justMyCode": true,
-            "args": ["fix", "~/Documents/PS2SMB/"]
+            "args": ["fix", "/run/media/edish/USB"]
         },
         {
             "name": "Install Crash Bandicoot in USB",
             "type": "python",
             "request": "launch",
             "module": "libopl",
-            "args": ["add", "--ul", "/run/media/edish/USB", "~/Documents/PS2SMB/CD/SLES_503.86.Crash Bandicoot TWOC.iso"]
+            "args": ["add", "--ul", "/run/media/edish/USB", "~/Documents/PS2SMB/CD/SLUS_202.38.Crash Bandicoot TWOC.iso"]
         },
         {
             "name": "Init directory structure on USB",
@@ -57,6 +57,13 @@
             "request": "launch",
             "module": "libopl",
             "args": ["init", "/run/media/edish/USB"]
+        },
+        {
+            "name": "Rename God Hand to its original name",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "args": ["rename", "/run/media/edish/USB", "SLUS_215.03", "God Hand"]
         }
     ]
 }

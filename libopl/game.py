@@ -10,8 +10,8 @@ import re
 from typing import List
 from enum import Enum
 from os import path
-import os
 
+ID_REGEX = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
 class GameType(Enum):
     UL = "UL (USBExtreme)"
@@ -21,7 +21,7 @@ class GameType(Enum):
 class Game():
     # constant values for gametypes
     type: GameType = None
-
+    global ID_REGEX
     ulcfg = None
 
     filedir: str
@@ -38,7 +38,6 @@ class Game():
     meta: dict
 
     # Regex for game serial/ids
-    id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
     # Recover generate id from filename
     def __init__(self, filepath, id=None):
@@ -53,7 +52,6 @@ class Game():
         return f"""\n----------------------------------------
 LANG=en_US.UTF-8OPL-ID:       {self.opl_id}
 Size (MB):    {self.size} 
-Source Title: {self.src_title} 
 New Title:    {self.title} 
 Filename:     {self.filename}
 
@@ -85,7 +83,7 @@ Filepath:     {self.filepath}
         print('Trying to recover Media-ID...')
         with open(self.filepath, 'rb') as f:
             for chunk in read_in_chunks(f):
-                id = self.id_regex.findall(str(chunk))
+                id = ID_REGEX.findall(str(chunk))
                 if len(id) > 0:
                     print('Success: %s' % id[0])
                     self.id = id[0]
@@ -142,7 +140,7 @@ Filepath:     {self.filepath}
             self.type = GameType.ISO
 
         # try to get id out of filename
-        if (res := self.id_regex.findall(self.filename)):
+        if (res := ID_REGEX.findall(self.filename)):
             self.id = res[0]
         else:
             self.recover_id()
@@ -159,12 +157,14 @@ Filepath:     {self.filepath}
 
 class ULGameImage(Game):
     # ULConfigGame object
-    from libopl.ul import ULConfigGame
+    from libopl.ul import ULConfigGame, ULConfig
     ulcfg: ULConfigGame
     filenames: List[Path]
     size: float
     type: GameType = GameType.UL
     crc32: str
+
+    global ID_REGEX
 
     # Chunk size matched USBUtil
     CHUNK_SIZE = 1073741824
@@ -180,13 +180,17 @@ class ULGameImage(Game):
         self.filenames = self.get_filenames()
         self.size = self.get_size()
 
+
     def get_filenames(self):
         if hasattr(self, "filenames"):
             return self.filenames
         else:
+            crc32 = self.crc32[2:].upper()
+            def part_format(part): return hex(part)[2:4].zfill(2).upper()
+
             self.filenames = [self.ulcfg.filedir.joinpath(
-                f"ul.{self.crc32[2:].upper()}.{self.id}.{hex(part)[2:4].zfill(2).upper()}")
-                for part in range(0, int(self.ulcfg.parts[0]))]
+                f"ul.{crc32}.{self.id}.{part_format(part)}")
+                    for part in range(0, int(self.ulcfg.parts[0]))]
             return self.filenames
 
     def get_size(self):
@@ -205,9 +209,9 @@ class ULGameImage(Game):
             return False
         return True
 
-    def delete_files(self, opl_drive) -> None:
+    def delete_files(self) -> None:
         for file in self.get_filenames():
-            os.remove(file)
+            file.unlink()
 
     def __repr__(self):
         return f"""\n----------------------------------------
@@ -243,7 +247,7 @@ class IsoGameImage(Game):
         self.filetype = "iso"
 
         # FIXME: Better title / id sub
-        self.title = self.id_regex.sub('', self.filename)
+        self.title = ID_REGEX.sub('', self.filename)
         self.title = self.title.replace("."+self.filetype, '')
         self.title = self.title.strip('._-\ ')
         self.filename = self.filename.replace("."+self.filetype, '')

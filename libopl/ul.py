@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 # from game import ULGameImage
 import math
-import os
 import re
-from typing import Dict
+from typing import Dict, List
 from enum import Enum
 from pathlib import Path
 from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso
@@ -60,6 +59,9 @@ class ULConfigGame():
 
         self.opl_id = self.region_code[3:]
         self.game = ULGameImage(ulcfg=self)
+
+    def refresh_crc32(self):
+        self.crc32 = hex(usba_crc32(self.name)).capitalize()
 
     # Get binary config data, with padding to 64byte
     def get_binary_data(self):
@@ -121,7 +123,7 @@ class ULConfig():
 
     # Add / Update Game using ul_ID & ULGameConfi/g object
 
-    def add_ulgame(self, ul_id: str, ulgame: ULConfigGame):
+    def add_ulgame(self, ul_id: bytes, ulgame: ULConfigGame):
         self.ulgames.update({ul_id: ulgame})
 
     # Print debug data
@@ -148,3 +150,65 @@ class ULConfig():
         with open(self.filepath, 'wb+') as cfg:
             for game in self.ulgames.values():
                 cfg.write(game.get_binary_data())
+
+    def find_and_recover_games(self):
+        installed_region_codes = set(
+            map(lambda part: ".".join(["ul"] + str(part.name).split('.')[2:4]).encode('ascii'), self.filepath.parent.glob("ul.*.*.*")
+                )
+        )
+        ul_region_codes: List[bytes] = self.ulgames.keys()
+        if installed_region_codes == ul_region_codes:
+            print('Installed UL games correspond ul.cfg games, nothing to delete')
+        else:
+            to_recover = installed_region_codes.difference(ul_region_codes)
+            print(
+                "These games are installed but they are not part of UL.cfg, recovering...")
+            for game in to_recover:
+                part_nr = len(list(self.filepath.parent.glob(
+                    "*"+game.decode('ascii').split('.')[1]+"*")))
+
+                first_part_size = next(
+                    self.filepath.parent.glob(
+                        "*"+".".join(game.decode('ascii').split('.')[1:3])+".00")
+                ).stat().st_size * (1024 ^ 2)
+
+                self.recover_game(game, part_nr, first_part_size)
+                print(f"Recovered \'{game.decode('ascii')}\'!")
+
+    def recover_game(self, region_code: bytes, parts_nr: int, first_part_size: float, title=b"PLACEHOLDER"):
+        region_code = region_code.ljust(14, b'\x00')
+        title = title.ljust(32, b'\x00')
+        unknown = b'\x00'
+        parts = chr(parts_nr).encode("ascii")
+        media = b'\x12' if first_part_size < 700 else b'\x14'
+        remaining = b'\x00\x00\x00\x00\x08\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
+        data = title + region_code + unknown + parts + media + remaining
+
+        crc32 = hex(usba_crc32(title))[2:].upper()
+        to_rename = self.filepath.parent.glob(
+            "*"+str(region_code).split(".")[1]+"*")
+        for file in to_rename:
+            file_parts = file.name.split(".")
+            new_filename = ".".join(
+                [file_parts[0], crc32, file_parts[2], file_parts[3], file_parts[4]])
+            file.rename(self.filepath.parent.joinpath(new_filename))
+
+        self.add_ulgame(region_code, ULConfigGame(self.filepath.parent, data))
+
+        self.write()
+
+    def rename_game(self, game_id: str, new_title: str):
+        game_id = b"ul." + game_id.encode("ascii")
+        game_to_rename = self.ulgames[game_id]
+        game_to_rename.name = new_title.encode("ascii").ljust(32, b'\x00')
+
+        crc32 = hex(usba_crc32(new_title.encode("ascii")))[2:].upper()
+        for file in game_to_rename.game.get_filenames():
+            file_parts = file.name.split(".")
+            new_filename = ".".join([file_parts[0], crc32, file_parts[2], file_parts[3], file_parts[4]])
+            file.rename(self.filepath.parent.joinpath(new_filename))
+        
+        game_to_rename.refresh_crc32()
+
+        self.write()

@@ -2,7 +2,7 @@
 ###
 # Python CLI Replacement for OPLManager
 
-from shutil import move, copyfile
+from shutil import copyfile
 from typing import List
 from pathlib import Path
 
@@ -10,7 +10,6 @@ from libopl.common import path_to_ul_cfg, get_iso_id
 from libopl.game import Game, ULGameImage, IsoGameImage, GameType
 from libopl.ul import ULConfig
 
-import os
 import re
 import sys
 import argparse
@@ -34,7 +33,7 @@ class POPLManager:
 
     # Return: array of filepath's for all games on opl_drive
     def __get_iso_game_files(self, type="DVD") -> List[Path]:
-        path = Path(os.path.join(self.args.opl_drive, type))
+        path = self.args.opl_drive.joinpath(type)
         games = list(path.glob('*.[iI][sS][oO]'))
         return games
 
@@ -62,28 +61,60 @@ class POPLManager:
         return self.__get_all_iso_games() + self.__get_all_ul_games()
 
     def delete(self, args):
+        for opl_id in args.opl_id:
+            for game in self.__get_full_game_list():
+                if game.opl_id == opl_id:
+                    match game.type:
+                        case GameType.UL:
+                            print(f"Deleting {opl_id}...")
+                            ul_cfg = ULConfig(path_to_ul_cfg(args.opl_drive))
+                            ul_cfg.ulgames.pop(game.ulcfg.region_code, None)
+                            print("Adjusting ul.cfg...")
+                            ul_cfg.write()
+                            print("Deleting game chunks...")
+                            game.delete_files()
+                            print("No more games left, deleting ul.cfg...")
+                            if not len(ul_cfg.ulgames):
+                                ul_cfg.filepath.unlink()
+                        case GameType.ISO:
+                            if game.filepath.exists():
+                                print(f"Deleting {opl_id}...")
+                                game.filepath.unlink()
+
+                    for art_file in args.opl_drive.joinpath("ART").glob(f"{args.opl_id}*"):
+                        art_file.unlink()
+
+    def rename(self, args):
+        if len(args.new_title) > 32:
+            print("Titles longer than 32 characters are not permitted!")
+            sys.exit(1)
+
         for game in self.__get_full_game_list():
-            if game.opl_id == args.opl_id[0]:
+            if args.opl_id == game.opl_id:
                 match game.type:
-                    case GameType.UL:
-                        print(f"Deleting {args.opl_id[0]}...")
-                        ul_cfg = ULConfig(path_to_ul_cfg(args.opl_drive))
-                        ul_cfg.ulgames.pop(game.ulcfg.region_code, None)
-                        print("Adjusting ul.cfg...")
-                        ul_cfg.write()
-                        print('Deleting game chunks...')
-                        game.delete_files(args.opl_drive)
                     case GameType.ISO:
-                        if os.path.exists(fp := game.filepath):
-                            print(f"Deleting {args.opl_id[0]}...")
-                            os.remove(fp)
+                        game.filepath = game.filepath.rename(
+                            game.filepath.parent.joinpath(
+                                args.new_title
+                            ).with_suffix(".iso")
+                        )
+                        game.title = args.new_title
+                        print(
+                            f"The game \'{args.opl_id}\' was renamed to \'{game.title}\'")
+                        print("Fixing game names...")
+                        self.fix(args)
+                    case GameType.UL:
+                        game: ULGameImage = game
+                        ULConfig(
+                            path_to_ul_cfg(args.opl_drive)
+                        ).rename_game(args.opl_id, args.new_title)
+                        print(
+                            f"The game \'{args.opl_id}\' was renamed to \'{args.new_title}\'")
 
     # Add game(s) to args.opl_drive
     #  - split game if > 4GB / forced
-    #  -  otherwise just copy with OPL-like filename
-    #  - download metadata from api
-    #  - rename game to title from api (if enabled)
-    #  - download artwork
+    #  - otherwise just copy with OPL-like filename
+
     def add(self, args):
         # self.api = API()
         for game_path in args.src_file:
@@ -114,7 +145,13 @@ class POPLManager:
                     copyfile(game_path, new_game_path)
                     print("Done!")
 
+    # Fix ISO names for faster OPL access
+    # Delete UL games with missing parts
+    # Recover UL games which are not in UL.cfg
     def fix(self, args):
+        ulcfg = ULConfig(path_to_ul_cfg(args.opl_drive))
+        ulcfg.find_and_recover_games()
+
         for game in self.__get_full_game_list():
             if not game.id:
                 print(f"Error while parsing file: {game.filepath}")
@@ -125,9 +162,7 @@ class POPLManager:
                     game_name_regex = re.compile(
                         r"^S[a-zA-Z]{3}.?\d{3}\.?\d{2}\.{1,32}")
                     if not game_name_regex.findall(game.filename):
-                        # continue
                         print(f"Fixing \'{game.filename}\'...")
-                        # continue
                         game.filepath = game.filepath.rename(
                             game.filepath.parent.joinpath(
                                 f"{game.id}.{game.filename}.iso")
@@ -136,9 +171,16 @@ class POPLManager:
                         game.gen_opl_id()
                         game.print_data()
                 case GameType.UL:
-                    pass
+                    for file in game.get_filenames():
+                        if not file.exists():
+                            print(f"Part \'{file.name}\' is missing from UL game \'{game.title}\'\
+                                  , please re-install the game")
+                            print("Deleting broken game...")
+                            setattr(args, "opl_id", [game.opl_id])
+                            self.delete(args)
 
     # List all Games on OPL-Drive
+
     def list(self, args):
         print("Searching Games on %s:" % args.opl_drive)
         iso_games = self.__get_all_iso_games()
@@ -153,7 +195,7 @@ class POPLManager:
             print("No ISO games installed")
 
         # Read ul.cfg & output games
-        if os.path.exists(path_to_ul_cfg(self.args.opl_drive)):
+        if path_to_ul_cfg(self.args.opl_drive).exists():
             print('|-> UL Games:')
             for game in self.__get_all_ul_games():
                 print(f" {str(game)}")
@@ -200,6 +242,18 @@ def __main__():
                             help="Media/ISO Source File",
                             type=lambda file: Path(file))
     add_parser.set_defaults(func=opl.add)
+
+    rename_parser = subparsers.add_parser(
+        "rename", help="Given an opl_id, change the title of the game corresponding to that ID in the given opl_drive"
+    )
+    rename_parser.add_argument(
+        "opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        type=lambda x: Path(x))
+    rename_parser.add_argument("opl_id",
+                               help="OPL-ID of Media/ISO File to delete")
+    rename_parser.add_argument("new_title",
+                               help="New title for the game")
+    rename_parser.set_defaults(func=opl.rename)
 
     fix_parser = subparsers.add_parser(
         "fix", help="rename/fix media filenames")

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 ###
 # Shared functions
-from os import path
 from pathlib import Path
 
 import ctypes
-import configparser
 import unicodedata
 import re
-
 
 def read_in_chunks(file_object, chunk_size=1024):
     """Lazy function (generator) to read a file piece by piece.
@@ -19,10 +16,8 @@ def read_in_chunks(file_object, chunk_size=1024):
             break
         yield data
 
-
 def path_to_ul_cfg(opl_dir: Path) -> Path:
     return opl_dir.joinpath('ul.cfg')
-
 
 def get_iso_id(filepath: Path) -> str:
     id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
