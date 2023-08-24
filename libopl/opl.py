@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 ###
 # Python CLI Replacement for OPLManager
-#
+
 from shutil import move, copyfile
 from typing import List
 from pathlib import Path
 
-from libopl.common import  path_to_ul_cfg, get_iso_id
+from libopl.common import path_to_ul_cfg, get_iso_id
 from libopl.game import Game, ULGameImage, IsoGameImage, GameType
 from libopl.ul import ULConfig
 
@@ -15,13 +15,13 @@ import re
 import sys
 import argparse
 
+
 class POPLManager:
     args = None
     opl_drive: Path
     games: List[Game]
     iso_games: List[IsoGameImage]
     ul_games: List[ULGameImage]
-
 
     def __init__(self, args=None):
         self.iso_games = []
@@ -51,8 +51,8 @@ class POPLManager:
 
     def __get_all_ul_games(self) -> List[Game]:
         ul_cfg: ULConfig = ULConfig(
-                 path_to_ul_cfg(self.args.opl_drive)
-                )
+            path_to_ul_cfg(self.args.opl_drive)
+        )
         if not self.ul_games:
             games = [game_cfg.game for game_cfg in ul_cfg.ulgames.values()]
             self.ul_games = games
@@ -87,7 +87,7 @@ class POPLManager:
     def add(self, args):
         # self.api = API()
         for game_path in args.src_file:
-            game_path:Path = game_path
+            game_path: Path = game_path
             # Game size in MB
             game_size = game_path.stat().st_size / 1024 ** 2
             if (game_size > 4000 and not args.iso) or args.ul:
@@ -95,49 +95,44 @@ class POPLManager:
                 ul_cfg.add_game_from_iso(game_path, args.force)
             else:
                 iso_id = get_iso_id(game_path)
-                if not all(map(lambda x: x.id != iso_id
-                               , self.__get_all_iso_games())) and not args.force:
-                    print(f"Game with ID \'{iso_id}\' is already installed, skipping...")
+                if not all(map(lambda x: x.id != iso_id, self.__get_all_iso_games())) and not args.force:
+                    print(
+                        f"Game with ID \'{iso_id}\' is already installed, skipping...")
                     print("Use the -f flag to force the installation of this game")
                     continue
                 else:
                     if len(title := str.split(game_path.name, '.')[0]) > 32:
-                        print(f"Game title \'{title}\' is longer than 32 characters, skipping...")
+                        print(
+                            f"Game title \'{title}\' is longer than 32 characters, skipping...")
                         continue
                     new_game_path: Path = args.opl_drive.joinpath(
                         "DVD" if game_size > 700 else "CD",
                         f"{iso_id}.{game_path.name}")
 
-                    print(f"Copying game to \'{new_game_path}\', please wait...")
+                    print(
+                        f"Copying game to \'{new_game_path}\', please wait...")
                     copyfile(game_path, new_game_path)
                     print("Done!")
 
-
-    # def __get_data_from_api(self, title_id):
-    #     if not self.api:
-    #         self.api = API()
-    #     return self.api.get_title_by_id(title_id)
-
-    # Try fixing a OPL-Drive by:
-    #  - Rename ISOs to {OPL-ID}.{title}.iso
-    #  - Download missing artwork / overwrite existing
     def fix(self, args):
         for game in self.__get_full_game_list():
             if not game.id:
                 print(f"Error while parsing file: {game.filepath}")
                 continue
-            
+
             match game.type:
                 case GameType.ISO:
-                    game_name_regex = re.compile(r"^S[a-zA-Z]{3}.?\d{3}\.?\d{2}\.{1,32}")
+                    game_name_regex = re.compile(
+                        r"^S[a-zA-Z]{3}.?\d{3}\.?\d{2}\.{1,32}")
                     if not game_name_regex.findall(game.filename):
                         # continue
                         print(f"Fixing \'{game.filename}\'...")
                         # continue
                         game.filepath = game.filepath.rename(
-                            game.filepath.parent.joinpath(f"{game.id}.{game.filename}.iso")
-                            )
-                        game.filename = game.filepath.name            
+                            game.filepath.parent.joinpath(
+                                f"{game.id}.{game.filename}.iso")
+                        )
+                        game.filename = game.filepath.name
                         game.gen_opl_id()
                         game.print_data()
                 case GameType.UL:
@@ -159,9 +154,9 @@ class POPLManager:
 
         # Read ul.cfg & output games
         if os.path.exists(path_to_ul_cfg(self.args.opl_drive)):
-                print('|-> UL Games:')
-                for game in self.__get_all_ul_games():
-                    print(f" {str(game)}")
+            print('|-> UL Games:')
+            for game in self.__get_all_ul_games():
+                print(f" {str(game)}")
         else:
             print("No UL-Games installed")
 
@@ -229,9 +224,9 @@ def __main__():
     del_parser.set_defaults(func=opl.delete)
     arguments = parser.parse_args()
     opl.set_args(arguments)
-    
+
     if hasattr(arguments, 'opl_drive'):
-        opl_drive:Path = arguments.opl_drive
+        opl_drive: Path = arguments.opl_drive
         if not opl_drive.exists() or not opl_drive.is_dir():
             print("Error: opl_drive directory doesn't exist!")
             sys.exit(1)
