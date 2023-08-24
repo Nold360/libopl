@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 from enum import Enum
 from pathlib import Path
-from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso
+from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso, check_ul_entry_for_corruption
 
 
 class ULMediaType(Enum):
@@ -19,6 +19,7 @@ class ULMediaType(Enum):
 
 class ULConfigGame():
     filedir: Path = None
+    global REGION_CODE_REGEX
 
     # Fields in ul.cfg per game (always 64byte)
     # 32byte - Title/Name of Game
@@ -138,6 +139,8 @@ class ULConfig():
         with open(self.filepath, 'rb') as data:
             game_cfg = data.read(64)
             while game_cfg:
+                check_ul_entry_for_corruption(game_cfg)
+                
                 game = ULConfigGame(
                     data=game_cfg, filedir=self.filepath.parent)
                 self.ulgames.update({game.region_code: game})

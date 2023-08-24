@@ -4,8 +4,10 @@
 from pathlib import Path
 
 import ctypes
+import sys
 import unicodedata
 import re
+
 
 def read_in_chunks(file_object, chunk_size=1024):
     """Lazy function (generator) to read a file piece by piece.
@@ -16,8 +18,10 @@ def read_in_chunks(file_object, chunk_size=1024):
             break
         yield data
 
+
 def path_to_ul_cfg(opl_dir: Path) -> Path:
     return opl_dir.joinpath('ul.cfg')
+
 
 def get_iso_id(filepath: Path) -> str:
     id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
@@ -76,7 +80,23 @@ def slugify(value, allow_unicode=False):
         return value
 
 
+REGION_CODE_REGEX = re.compile(rb'ul\.S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
+
+
+def check_ul_entry_for_corruption(data: bytes):
+    if not REGION_CODE_REGEX.findall(bytes(data[32:46])):
+        print(
+            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
+        sys.exit(1)
+    if not (bytes([data[48]]) == b"\x12" or bytes([data[48]]) == b"\x14"):
+        print(
+            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
+        sys.exit(1)
+
+
 '''
+
+
 //Original CRC32-Function from OPL-Sourcecode:
 
 unsigned int USBA_crc32(char *string)
@@ -104,9 +124,9 @@ unsigned int USBA_crc32(char *string)
 }
 '''
 
+
 # ^ That function in shitty python
 # Generate crc32 from game title for ul.cfg
-
 
 def usba_crc32(name: bytes):
     name = name.strip(b'\x00')

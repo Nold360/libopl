@@ -14,7 +14,6 @@ import re
 import sys
 import argparse
 
-
 class POPLManager:
     args = None
     opl_drive: Path
@@ -205,7 +204,7 @@ class POPLManager:
     # Create OPL Folders / stuff
     def init(self, args):
         print("Inititalizing OPL-Drive...")
-        for dir in ['APPS', 'BOOT', 'ART', 'CD', 'CFG', 'CHT', 'DVD', 'THM', 'VMC']:
+        for dir in ["APPS", "LNG", "ART", "CD", "CFG", "CHT", "DVD", "THM", "VMC"]:
             if not (dir := args.opl_drive.joinpath(dir)).is_dir():
                 dir.mkdir(0o777)
         print("Done!")
@@ -219,7 +218,7 @@ def __main__():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
-    subparsers = parser.add_subparsers(help='Choose your path...')
+    subparsers = parser.add_subparsers(help="Choose your path...")
 
     list_parser = subparsers.add_parser("list", help="List Games on OPL-Drive")
     list_parser.add_argument(
@@ -232,13 +231,13 @@ def __main__():
     add_parser.add_argument(
         "--force", "-f", help="Force overwriting of existing files", action='store_true', default=False)
     add_parser.add_argument(
-        "--ul", "-u", help="Force UL-Game converting", action='store_true')
+        "--ul", "-u", help="Force UL-Game converting", action="store_true")
     add_parser.add_argument(
-        "--iso", "-i", help="Don't do UL conversion", action='store_true')
+        "--iso", "-i", help="Don't do UL conversion", action="store_true")
     add_parser.add_argument(
         "opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
         type=lambda x: Path(x))
-    add_parser.add_argument("src_file", nargs='+',
+    add_parser.add_argument("src_file", nargs="+",
                             help="Media/ISO Source File",
                             type=lambda file: Path(file))
     add_parser.set_defaults(func=opl.add)
@@ -273,19 +272,19 @@ def __main__():
     del_parser.add_argument(
         "opl_drive", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
         type=lambda x: Path(x))
-    del_parser.add_argument("opl_id", nargs='+',
+    del_parser.add_argument("opl_id", nargs="+",
                             help="OPL-ID of Media/ISO File to delete")
     del_parser.set_defaults(func=opl.delete)
     arguments = parser.parse_args()
     opl.set_args(arguments)
 
-    if hasattr(arguments, 'opl_drive'):
+    if hasattr(arguments, "opl_drive"):
         opl_drive: Path = arguments.opl_drive
         if not opl_drive.exists() or not opl_drive.is_dir():
             print("Error: opl_drive directory doesn't exist!")
             sys.exit(1)
 
-    if hasattr(arguments, 'func'):
+    if hasattr(arguments, "func"):
         arguments.func(arguments)
     else:
         parser.print_help(sys.stderr)
