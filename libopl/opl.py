@@ -115,11 +115,11 @@ class POPLManager:
     #  - otherwise just copy with OPL-like filename
 
     def add(self, args):
-        # self.api = API()
         for game_path in args.src_file:
             game_path: Path = game_path
             # Game size in MB
             game_size = game_path.stat().st_size / 1024 ** 2
+
             if (game_size > 4000 and not args.iso) or args.ul:
                 ul_cfg = ULConfig(path_to_ul_cfg(args.opl_drive))
                 ul_cfg.add_game_from_iso(game_path, args.force)
@@ -146,11 +146,15 @@ class POPLManager:
 
     # Fix ISO names for faster OPL access
     # Delete UL games with missing parts
-    # Recover UL games which are not in UL.cfg
+    # Recover UL games which are not in ul.cfg
+    # Find corrupted entries in ul.cfg first and delete them
     def fix(self, args):
+        ULConfig.find_and_delete_corrupted_entries(path_to_ul_cfg(args.opl_drive))
+
         ulcfg = ULConfig(path_to_ul_cfg(args.opl_drive))
         ulcfg.find_and_recover_games()
 
+        print("Fixing ISO names for OPL read speed and deleting broken UL games")
         for game in self.__get_full_game_list():
             if not game.id:
                 print(f"Error while parsing file: {game.filepath}")

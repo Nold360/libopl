@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 ###
 # Shared functions
+from enum import Enum
 from pathlib import Path
 
 import ctypes
@@ -82,17 +83,23 @@ def slugify(value, allow_unicode=False):
 
 REGION_CODE_REGEX = re.compile(rb'ul\.S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
+class ULCorruptionType(Enum):
+    REGION_CODE = 1
+    MEDIA_TYPE = 2
+    NO_CORRUPTION = 3
 
-def check_ul_entry_for_corruption(data: bytes):
+def check_ul_entry_for_corruption_and_crash(data: bytes):
+    if not check_ul_entry_for_corruption(data):
+        print(
+            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
+        sys.exit(1)
+
+def check_ul_entry_for_corruption(data) -> ULCorruptionType:
     if not REGION_CODE_REGEX.findall(bytes(data[32:46])):
-        print(
-            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
-        sys.exit(1)
+        return ULCorruptionType.REGION_CODE
     if not (bytes([data[48]]) == b"\x12" or bytes([data[48]]) == b"\x14"):
-        print(
-            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
-        sys.exit(1)
-
+        return ULCorruptionType.MEDIA_TYPE
+    return ULCorruptionType.NO_CORRUPTION
 
 '''
 

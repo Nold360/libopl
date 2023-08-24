@@ -5,7 +5,9 @@ import re
 from typing import Dict, List
 from enum import Enum
 from pathlib import Path
-from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso, check_ul_entry_for_corruption
+from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso\
+                        , check_ul_entry_for_corruption_and_crash  \
+                        , check_ul_entry_for_corruption, ULCorruptionType
 
 
 class ULMediaType(Enum):
@@ -139,8 +141,8 @@ class ULConfig():
         with open(self.filepath, 'rb') as data:
             game_cfg = data.read(64)
             while game_cfg:
-                check_ul_entry_for_corruption(game_cfg)
-                
+                check_ul_entry_for_corruption_and_crash(game_cfg)
+
                 game = ULConfigGame(
                     data=game_cfg, filedir=self.filepath.parent)
                 self.ulgames.update({game.region_code: game})
@@ -161,7 +163,7 @@ class ULConfig():
         )
         ul_region_codes: List[bytes] = self.ulgames.keys()
         if installed_region_codes == ul_region_codes:
-            print('Installed UL games correspond ul.cfg games, nothing to delete')
+            print('Installed UL games correspond ul.cfg games, nothing to recover')
         else:
             to_recover = installed_region_codes.difference(ul_region_codes)
             print(
@@ -215,3 +217,20 @@ class ULConfig():
         game_to_rename.refresh_crc32()
 
         self.write()
+
+    def find_and_delete_corrupted_entries(filepath: Path):
+        final_file: bytes = b""
+
+        with filepath.open("rb") as data:
+            game_cfg = data.read(64)
+            while game_cfg:
+                match check_ul_entry_for_corruption(game_cfg):
+                    case ULCorruptionType.REGION_CODE | ULCorruptionType.MEDIA_TYPE:
+                        print(f"The game with the title \'{game_cfg[0:32].decode('ascii')}\' is corrupted, recovering UL entry and renaming to 'PLACEHOLDER'")
+                        pass
+                    case ULCorruptionType.NO_CORRUPTION:
+                        final_file += game_cfg
+                game_cfg = data.read(64)
+        
+        filepath.write_bytes(final_file)
+
