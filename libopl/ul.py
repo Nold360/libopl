@@ -224,6 +224,9 @@ class ULConfig():
         with filepath.open("rb") as data:
             game_cfg = data.read(64)
             while game_cfg:
+                if len(game_cfg) < 64:
+                    game_cfg = data.read(64)
+                    continue
                 match check_ul_entry_for_corruption(game_cfg):
                     case ULCorruptionType.REGION_CODE | ULCorruptionType.MEDIA_TYPE:
                         print(f"The game with the title \'{game_cfg[0:32].decode('ascii')}\' is corrupted, recovering UL entry and renaming to 'PLACEHOLDER'")

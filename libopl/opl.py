@@ -222,6 +222,8 @@ def __main__():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
+    parser.prog = "opl"
+
     subparsers = parser.add_subparsers(help="Choose your path...")
 
     list_parser = subparsers.add_parser("list", help="List Games on OPL-Drive")
