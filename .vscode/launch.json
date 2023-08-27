@@ -29,6 +29,22 @@
             "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
         },
         {
+            "name": "Install Shinobi as ISO, update from storage",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["add", "-s", "-f", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
+        },
+        {
+            "name": "Install Shinobi as UL, update from storage",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "justMyCode": true,
+            "args": ["add", "-s", "-f","-ul", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
+        },
+        {
             "name": "Install PES 2013 as UL",
             "type": "python",
             "request": "launch",
@@ -57,6 +73,20 @@
             "request": "launch",
             "module": "libopl",
             "args": ["init", "/run/media/edish/USB"]
+        },
+        {
+            "name": "Download all artwork",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "args": ["artwork", "/home/edish/Documents/PS2SMB"]
+        },
+        {
+            "name": "Rename JAK II to its original name",
+            "type": "python",
+            "request": "launch",
+            "module": "libopl",
+            "args": ["storage", "rename", "~/Documents/PS2SMB", "SCUS_972.65"]
         },
         {
             "name": "Rename God Hand to its original name",

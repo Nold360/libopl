@@ -94,9 +94,10 @@ class ULConfig():
             filepath.touch(777)
 
     # Add / Update Game using Game object
-    def add_game_from_iso(self, src_iso: Path, force: bool):
-        title: bytes = re.sub(r'.[iI][sS][oO]', '',
-                              src_iso.name).encode('ascii')
+    def add_game_from_iso(self, src_iso: Path, force: bool, title: bytes=None):
+        if not title:
+            title: bytes = re.sub(r'.[iI][sS][oO]', '',
+                                src_iso.name).encode('ascii')
         game_size = src_iso.stat().st_size / 1024 ** 2
 
         if len(title) > 32:
