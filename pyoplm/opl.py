@@ -7,10 +7,10 @@ from typing import List
 from pathlib import Path
 from configparser import ConfigParser
 
-from pyopl.common import path_to_ul_cfg, get_iso_id
-from pyopl.game import Game, ULGameImage, IsoGameImage, GameType
-from pyopl.storage import Storage
-from pyopl.ul import ULConfig
+from pyoplm.common import path_to_ul_cfg, get_iso_id
+from pyoplm.game import Game, ULGameImage, IsoGameImage, GameType
+from pyoplm.storage import Storage
+from pyoplm.ul import ULConfig
 
 import re
 import sys
@@ -37,7 +37,7 @@ class POPLManager:
 
     def initialize_storage(self):
         config = ConfigParser()
-        config.read(str(self.opl_dir.joinpath("pyopl.ini")))
+        config.read(str(self.opl_dir.joinpath("pyoplm.ini")))
         self.storage = Storage(config.get("STORAGE", "location", fallback=None), self.opl_dir, config.get(
             "STORAGE.INDEXING", "zip_contents_location", fallback=None))
 
@@ -108,7 +108,7 @@ class POPLManager:
                 found = True
                 if hasattr(args, "storage"):
                     if not self.storage.is_enabled():
-                        print("Proper storage link not supplied in opl_dir/pyopl.ini,\
+                        print("Proper storage link not supplied in opl_dir/pyoplm.ini,\
                                not downloading artwork.", file=sys.stderr)
                         sys.exit(0)
 
@@ -244,7 +244,7 @@ class POPLManager:
                         game.opl_id, bool(args.overwrite))
         else:
             print(
-                "Storage link not supplied in opl_dir/pyopl.ini, not downloading artwork.", file=sys.stderr)
+                "Storage link not supplied in opl_dir/pyoplm.ini, not downloading artwork.", file=sys.stderr)
             sys.exit(0)
 
     # List all Games on OPL-Drive

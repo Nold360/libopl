@@ -196,7 +196,7 @@ class Indexing:
         table = games_page.find('table')
         if not table:
             raise ValueError(
-                "STORAGE.CACHING's 'zip_contents_location' key in the 'pyopl.ini' does not lead to an internet archive zip content view page, please enter a proper link. Disabling caching for this run.")
+                "STORAGE.CACHING's 'zip_contents_location' key in the 'pyoplm.ini' does not lead to an internet archive zip content view page, please enter a proper link. Disabling caching for this run.")
 
         rows = table.find_all('tr')
 

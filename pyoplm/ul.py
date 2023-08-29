@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 from enum import Enum
 from pathlib import Path
-from pyopl.common import usba_crc32, get_iso_id, ul_files_from_iso\
+from pyoplm.common import usba_crc32, get_iso_id, ul_files_from_iso\
                         , check_ul_entry_for_corruption_and_crash  \
                         , check_ul_entry_for_corruption, ULCorruptionType
 
@@ -50,7 +50,7 @@ class ULConfigGame():
     game = None
 
     def __init__(self, filedir, data):
-        from pyopl.game import ULGameImage
+        from pyoplm.game import ULGameImage
         self.filedir = filedir
         self.name = bytes(data[:32])
         self.crc32 = hex(usba_crc32(self.name)).capitalize()
