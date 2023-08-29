@@ -7,14 +7,15 @@ from typing import List
 from pathlib import Path
 from configparser import ConfigParser
 
-from libopl.common import path_to_ul_cfg, get_iso_id
-from libopl.game import Game, ULGameImage, IsoGameImage, GameType
-from libopl.storage import Storage
-from libopl.ul import ULConfig
+from pyopl.common import path_to_ul_cfg, get_iso_id
+from pyopl.game import Game, ULGameImage, IsoGameImage, GameType
+from pyopl.storage import Storage
+from pyopl.ul import ULConfig
 
 import re
 import sys
 import argparse
+
 
 class POPLManager:
     args = None
@@ -24,7 +25,7 @@ class POPLManager:
     iso_games: List[IsoGameImage]
     ul_games: List[ULGameImage]
 
-    def __init__(self, args=None):
+    def __init__(self):
         self.iso_games = []
         self.ul_games = []
         self.games = []
@@ -36,11 +37,12 @@ class POPLManager:
 
     def initialize_storage(self):
         config = ConfigParser()
-        config.read(str(self.opl_dir.joinpath("libopl.ini")))
-        self.storage = Storage(config.get("STORAGE", "location", fallback="DISABLED"), self.opl_dir)
-
+        config.read(str(self.opl_dir.joinpath("pyopl.ini")))
+        self.storage = Storage(config.get("STORAGE", "location", fallback=None), self.opl_dir, config.get(
+            "STORAGE.INDEXING", "zip_contents_location", fallback=None))
 
     # Return: array of filepath's for all games on opl_dir
+
     def __get_iso_game_files(self, type="DVD") -> List[Path]:
         path = self.opl_dir.joinpath(type)
         games = list(path.glob('*.[iI][sS][oO]'))
@@ -87,46 +89,66 @@ class POPLManager:
                                 ul_cfg.filepath.unlink()
                         case GameType.ISO:
                             if game.filepath.exists():
-                                print(f"Deleting {opl_id}...")
-                                game.filepath.unlink()
+                                game.delete_files()
 
                     for art_file in args.opl_dir.joinpath("ART").glob(f"{args.opl_id}*"):
                         art_file.unlink()
 
     def rename(self, args):
-        if hasattr(args, "storage"):
-            setattr(args, "new_title", self.storage.get_game_title(args.opl_id))
+        if not hasattr(args, "storage"):
+            args.opl_id = [args.opl_id]
 
-        if len(args.new_title) > 32:
-            print("Titles longer than 32 characters are not permitted!")
-            sys.exit(1)
+        if not args.opl_id:
+            print("Renaming all games from storage...")
+
+        found = False
 
         for game in self.__get_full_game_list():
-            if args.opl_id == game.opl_id:
+            if game.opl_id in args.opl_id or not args.opl_id:
+                found = True
+                if hasattr(args, "storage"):
+                    if not self.storage.is_enabled():
+                        print("Proper storage link not supplied in opl_dir/pyopl.ini,\
+                               not downloading artwork.", file=sys.stderr)
+                        sys.exit(0)
+
+                    setattr(args, "new_title",
+                            self.storage.get_game_title(game.opl_id))
+                if not args.new_title:
+                    continue
+
+                if len(args.new_title) > 32:
+                    print(f"Title {args.new_title} is too long!", file=sys.stderr)
+                    print("Titles longer than 32 characters are not permitted!", file=sys.stderr)
+                    print(f"Skipping {game.opl_id}...", file=sys.stderr)
+                    continue
+
                 match game.type:
                     case GameType.ISO:
-                        game.filepath = game.filepath.rename(
-                            game.filepath.parent.joinpath(
-                                args.new_title
-                            ).with_suffix(".iso")
+                        new_filename = f"{game.opl_id}.{args.new_title}.iso"
+                        new_filepath = game.filepath.parent.joinpath(
+                            new_filename
                         )
+                        game.filepath = game.filepath.rename(new_filepath)
+
                         game.title = args.new_title
                         print(
-                            f"The game \'{args.opl_id}\' was renamed to \'{game.title}\'")
-                        print("Fixing game names...")
-                        self.fix(args)
+                            f"The game \'{game.opl_id}\' was renamed to \'{game.title}\'")
                     case GameType.UL:
                         game: ULGameImage = game
                         ULConfig(
                             path_to_ul_cfg(args.opl_dir)
-                        ).rename_game(args.opl_id, args.new_title)
+                        ).rename_game(game.opl_id, args.new_title)
                         print(
-                            f"The game \'{args.opl_id}\' was renamed to \'{args.new_title}\'")
+                            f"The game \'{game.opl_id}\' was renamed to \'{args.new_title}\'")
+
+        print("Fixing all games just in case...")
+        self.fix(args)
 
     # Add game(s) to args.opl_dir
     #  - split game if > 4GB / forced
     #  - otherwise just copy with OPL-like filename
-
+    #  - If storage features are enabled, try to get title from storage and download artwork
     def add(self, args):
         for game_path in args.src_file:
             game_path: Path = game_path
@@ -137,7 +159,8 @@ class POPLManager:
             if (game_size > 4000 and not args.iso) or args.ul:
                 ul_cfg = ULConfig(path_to_ul_cfg(args.opl_dir))
                 if self.storage.is_enabled() and args.storage:
-                    ul_cfg.add_game_from_iso(game_path, args.force, self.storage.get_game_title(iso_id).encode('ascii'))
+                    ul_cfg.add_game_from_iso(
+                        game_path, args.force, self.storage.get_game_title(iso_id).encode('ascii'))
                 else:
                     ul_cfg.add_game_from_iso(game_path, args.force)
             else:
@@ -150,7 +173,8 @@ class POPLManager:
 
                     if self.storage.is_enabled() and args.storage:
                         title = self.storage.get_game_title(iso_id)
-                    else:
+
+                    if title:
                         title = str.split(game_path.name, '.')[0]
 
                     if len(title) > 32:
@@ -165,7 +189,7 @@ class POPLManager:
                         f"Copying game to \'{new_game_path}\', please wait...")
                     copyfile(game_path, new_game_path)
                     print("Done!")
-            
+
             if self.storage.is_enabled() and args.storage:
                 self.storage.get_artwork_for_game(iso_id, True)
 
@@ -174,7 +198,8 @@ class POPLManager:
     # Recover UL games which are not in ul.cfg
     # Find corrupted entries in ul.cfg first and delete them
     def fix(self, args):
-        ULConfig.find_and_delete_corrupted_entries(path_to_ul_cfg(args.opl_dir))
+        ULConfig.find_and_delete_corrupted_entries(
+            path_to_ul_cfg(args.opl_dir))
 
         ulcfg = ULConfig(path_to_ul_cfg(args.opl_dir))
         ulcfg.find_and_recover_games()
@@ -210,12 +235,16 @@ class POPLManager:
     # Download all artwork for all games if storage is enabled
     def artwork(self, args):
         if self.storage.is_enabled():
-            print("Downloading artwork for all games...")
+            if not args.opl_id:
+                print("Downloading artwork for all games...")
             for game in self.__get_full_game_list():
-                print(f"Downloading artwork for [{game.opl_id}] {game.title}")
-                self.storage.get_artwork_for_game(game.opl_id, bool(args.overwrite))
+                if game.opl_id in args.opl_id or not args.opl_id:
+                    print(f"Downloading artwork for [{game.opl_id}] {game.title}")
+                    self.storage.get_artwork_for_game(
+                        game.opl_id, bool(args.overwrite))
         else:
-            print("Storage link not supplied in opl_dir/libopl.ini, not downloading artwork.", sys.stderr)
+            print(
+                "Storage link not supplied in opl_dir/pyopl.ini, not downloading artwork.", file=sys.stderr)
             sys.exit(0)
 
     # List all Games on OPL-Drive
@@ -253,7 +282,7 @@ class POPLManager:
 # Parses arguments & calls function from POPLManager-object
 
 
-def __main__():
+def main():
     opl = POPLManager()
 
     parser = argparse.ArgumentParser()
@@ -263,7 +292,7 @@ def __main__():
 
     list_parser = subparsers.add_parser("list", help="List Games on OPL-Drive")
     list_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     list_parser.set_defaults(func=opl.list)
 
@@ -278,7 +307,7 @@ def __main__():
     add_parser.add_argument(
         "--storage", "-s", help="Get title and artwork from storage if it's enabled", action="store_true")
     add_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     add_parser.add_argument("src_file", nargs="+",
                             help="Media/ISO Source File",
@@ -286,33 +315,43 @@ def __main__():
     add_parser.set_defaults(func=opl.add)
 
     storage_parser = subparsers.add_parser(
-        "storage", help="Art and names storage-related functionality"
+        "storage", help="Art and title storage-related functionality"
     )
-    storage_subparsers = storage_parser.add_subparsers(help="Choose your path...")
+    storage_subparsers = storage_parser.add_subparsers(
+        help="Choose your path...")
+
     artwork_parser = storage_subparsers.add_parser(
-        "artwork", help="Download artwork for all games installed in opl_dir"
+        "artwork", help="Download artwork for games installed in opl_dir\
+            , if no opl_id are supplied, downloads artwork for all games"
     )
     artwork_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     artwork_parser.add_argument(
         "--overwrite", "-o", help="Overwrite existing art files for games", action="store_true")
+    artwork_parser.add_argument("opl_id"
+                                , help="OPL-IDs of games to download artwork for"
+                                , nargs="*"
+                                )
     artwork_parser.set_defaults(func=opl.artwork)
+
     storage_rename_parser = storage_subparsers.add_parser(
-        "rename", help="Rename the game opl_id with a name taken from the storage"
+        "rename", help="Rename the game opl_id with a name taken from the storage\
+            , if no opl_id are supplied, renames all games"
     )
     storage_rename_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     storage_rename_parser.add_argument("opl_id",
-                               help="OPL-ID of Media/ISO File to delete")
+                                       help="OPL-IDs of games to rename",
+                                       nargs="*")
     storage_rename_parser.set_defaults(storage=True, func=opl.rename)
 
     rename_parser = subparsers.add_parser(
-        "rename", help="Given an opl_id, change the title of the game corresponding to that ID in the given opl_dir"
+        "rename", help="Change the title of the game corresponding to opl_id to new_title in the given opl_dir"
     )
     rename_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     rename_parser.add_argument(
         "--ul", "-u", help="Force UL-Game converting", action="store_true")
@@ -322,11 +361,10 @@ def __main__():
                                help="New title for the game")
     rename_parser.set_defaults(func=opl.rename)
 
-    
     fix_parser = subparsers.add_parser(
         "fix", help="rename/fix media filenames")
     fix_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     fix_parser.set_defaults(func=opl.fix)
 
@@ -339,13 +377,19 @@ def __main__():
 
     del_parser = subparsers.add_parser("delete", help="Delete game from Drive")
     del_parser.add_argument(
-        "opl_dir", help="Path to OPL - e.g. your USB- or SMB-Drive\nExample: /media/usb",
+        "opl_dir", help="Path to your OPL directory",
         type=lambda x: Path(x))
     del_parser.add_argument("opl_id", nargs="+",
                             help="OPL-ID of Media/ISO File to delete")
     del_parser.set_defaults(func=opl.delete)
     arguments = parser.parse_args()
+
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+
     opl.set_args(arguments)
+
 
     if hasattr(arguments, "opl_dir"):
         opl_dir: Path = arguments.opl_dir
@@ -362,4 +406,4 @@ def __main__():
 
 
 if __name__ == '__main__':
-    __main__()
+    main()

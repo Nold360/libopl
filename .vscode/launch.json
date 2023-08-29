@@ -8,7 +8,7 @@
             "name": "List Games",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["list", "~/Documents/PS2SMB/"]
         },
@@ -16,7 +16,7 @@
             "name": "Delete PES 2013",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["delete", "~/Documents/PS2SMB/", "SLES_556.66"]
         },
@@ -24,7 +24,7 @@
             "name": "Install PES 2013 as ISO",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
         },
@@ -32,7 +32,7 @@
             "name": "Install Shinobi as ISO, update from storage",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["add", "-s", "-f", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
         },
@@ -40,7 +40,7 @@
             "name": "Install Shinobi as UL, update from storage",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["add", "-s", "-f","-ul", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
         },
@@ -48,7 +48,7 @@
             "name": "Install PES 2013 as UL",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
             "args": ["add", "--ul", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
         },
@@ -56,44 +56,58 @@
             "name": "Fix games",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "justMyCode": true,
-            "args": ["fix", "/run/media/edish/USB"]
+            "args": ["fix", "~/Documents/PS2SMB"]
         },
         {
             "name": "Install Crash Bandicoot in USB",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
-            "args": ["add", "--ul", "/run/media/edish/USB", "~/Documents/PS2SMB/CD/SLUS_202.38.Crash Bandicoot TWOC.iso"]
+            "module": "pyopl",
+            "args": ["add", "--ul", "~/Documents/PS2SMB", "~/Documents/PS2SMB/CD/SLUS_202.38.Crash Bandicoot TWOC.iso"]
         },
         {
             "name": "Init directory structure on USB",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
-            "args": ["init", "/run/media/edish/USB"]
+            "module": "pyopl",
+            "args": ["init", "~/Documents/PS2SMB"]
         },
         {
             "name": "Download all artwork",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
-            "args": ["artwork", "/home/edish/Documents/PS2SMB"]
+            "module": "pyopl",
+            "args": ["storage", "artwork", "-o", "/home/edish/Documents/PS2SMB"]
+        },
+        {
+            "name": "Download artwork for JAK II",
+            "type": "python",
+            "request": "launch",
+            "module": "pyopl",
+            "args": ["storage", "artwork", "-o", "/home/edish/Documents/PS2SMB", "SCUS_972.65"]
+        },
+        {
+            "name": "Bulk rename games to their original name",
+            "type": "python",
+            "request": "launch",
+            "module": "pyopl",
+            "args": ["storage", "rename", "~/Documents/PS2SMB", "SCES_514.28", "SCUS_972.65", "SLES_556.66", "SLUS_209.46", "SLUS_212.28", "SLUS_215.03", "SLUS_216.21"]
         },
         {
             "name": "Rename JAK II to its original name",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
+            "module": "pyopl",
             "args": ["storage", "rename", "~/Documents/PS2SMB", "SCUS_972.65"]
         },
         {
             "name": "Rename God Hand to its original name",
             "type": "python",
             "request": "launch",
-            "module": "libopl",
-            "args": ["rename", "/run/media/edish/USB", "SLUS_215.03", "God Hand"]
+            "module": "pyopl",
+            "args": ["rename", "~/Documents/PS2SMB", "SLUS_215.03", "God Hand"]
         }
     ]
 }

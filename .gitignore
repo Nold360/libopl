@@ -4,5 +4,5 @@ __pycache__
 db
 dist
 build
-libopl.egg-info
+pyopl.egg-info
 .vscode/launch.json

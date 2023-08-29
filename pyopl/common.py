@@ -6,9 +6,12 @@ from pathlib import Path
 
 import ctypes
 import sys
+from typing import List
 import unicodedata
 import re
 
+REGION_CODE_REGEX_BYTES = re.compile(rb'[HhMmPpGgNnCcSsJjTtBbDdAaKk][a-zA-Z]{3}.?\d{3}\.?\d{2}')
+REGION_CODE_REGEX_STR = re.compile(r'[HhMmPpGgNnCcSsJjTtBbDdAaKk][a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
 def read_in_chunks(file_object, chunk_size=1024):
     """Lazy function (generator) to read a file piece by piece.
@@ -25,12 +28,11 @@ def path_to_ul_cfg(opl_dir: Path) -> Path:
 
 
 def get_iso_id(filepath: Path) -> str:
-    id_regex = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
     with open(filepath, 'rb') as f:
         for chunk in read_in_chunks(f):
-            id = id_regex.findall(str(chunk))
-            if len(id) > 0:
-                return id[0]
+            id_matches: List[bytes] = REGION_CODE_REGEX_BYTES.findall(chunk)
+            if id_matches:
+                return id_matches[0].decode("ascii", "ignore")
     raise ValueError(f"Cannot find Game ID for ISO file '{filepath}'")
 
 
@@ -63,25 +65,24 @@ def ul_files_from_iso(src_iso: Path, dest_path: Path, force=False) -> int:
     return file_part
 
 
-"""
-Normalizes string, **DOESN'T** converts to lowercase, removes non-alpha characters,
-
-Stolen from: https://docs.djangoproject.com/en/2.1/ref/utils/#django.utils.text.slugify
-"""
 
 
 def slugify(value, allow_unicode=False):
+    """
+    Normalizes string, **DOESN'T** converts to lowercase, removes non-alpha characters,
+
+    Stolen from: https://docs.djangoproject.com/en/2.1/ref/utils/#django.utils.text.slugify
+    """
     value = str(value)
     if allow_unicode:
         value = unicodedata.normalize('NFKC', value)
     else:
         value = unicodedata.normalize('NFKD', value).encode(
-            'ascii', 'ignore').decode('ascii')
+            'ascii', 'ignore').decode("ascii", "ignore")
         value = re.sub(r'[^\w\s-]', '', value).strip()
         return value
 
 
-REGION_CODE_REGEX = re.compile(rb'ul\.S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
 class ULCorruptionType(Enum):
     REGION_CODE = 1
@@ -91,11 +92,11 @@ class ULCorruptionType(Enum):
 def check_ul_entry_for_corruption_and_crash(data: bytes):
     if not check_ul_entry_for_corruption(data):
         print(
-            f"The entry \'{data[0:32].decode('ascii')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
+            f"The entry \'{data[0:32].decode('ascii', 'ignore')}\' in ul.cfg is corrupted, run 'fix' on the directory to try automatically fixing the issue'")
         sys.exit(1)
 
 def check_ul_entry_for_corruption(data) -> ULCorruptionType:
-    if not REGION_CODE_REGEX.findall(bytes(data[32:46])):
+    if not REGION_CODE_REGEX_BYTES.findall(bytes(data[32:46])):
         return ULCorruptionType.REGION_CODE
     if not (bytes([data[48]]) == b"\x12" or bytes([data[48]]) == b"\x14"):
         return ULCorruptionType.MEDIA_TYPE

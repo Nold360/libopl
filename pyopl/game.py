@@ -4,14 +4,12 @@
 #
 from functools import reduce
 from pathlib import Path
-from libopl.common import get_iso_id, slugify, read_in_chunks, usba_crc32
+from pyopl.common import REGION_CODE_REGEX_BYTES, get_iso_id, slugify, read_in_chunks, usba_crc32, REGION_CODE_REGEX_STR
 
 import re
 from typing import List
 from enum import Enum
 from os import path
-
-ID_REGEX = re.compile(r'S[a-zA-Z]{3}.?\d{3}\.?\d{2}')
 
 class GameType(Enum):
     UL = "UL (USBExtreme)"
@@ -21,7 +19,7 @@ class GameType(Enum):
 class Game():
     # constant values for gametypes
     type: GameType = None
-    global ID_REGEX
+    global REGION_CODE_REGEX_BYTES
     ulcfg = None
 
     filedir: str
@@ -40,13 +38,9 @@ class Game():
     # Regex for game serial/ids
 
     # Recover generate id from filename
-    def __init__(self, filepath, id=None):
+    def __init__(self, filepath):
         if filepath:
             self.filepath = Path(filepath)
-            self.get_common_filedata()
-        if id:
-            self.id = id
-            self.gen_opl_id()
 
     def __repr__(self):
         return f"""\n----------------------------------------
@@ -80,76 +74,13 @@ Filepath:     {self.filepath}
         return oplid.upper()
 
     def recover_id(self):
-        print('Trying to recover Media-ID...')
         with open(self.filepath, 'rb') as f:
             for chunk in read_in_chunks(f):
-                id = ID_REGEX.findall(str(chunk))
-                if len(id) > 0:
-                    print('Success: %s' % id[0])
-                    self.id = id[0]
+                id_matches: List[bytes] = REGION_CODE_REGEX_BYTES.findall(chunk)
+                if id_matches:
+                    self.id = id_matches[0].decode('ascii', 'ignore')
                     self.gen_opl_id()
-                    return id[0]
-        return None
 
-    # Set missing attributes using api metadata, returns False if it fails,
-    # True if it succeeds
-    def set_metadata(self, api, override=False):
-        if not self.id:
-            return
-        try:
-            meta = api.get_metadata(self.id)
-            self.meta = meta
-        except:
-            return
-
-        self.src_title = self.title
-        if self.meta:
-            try:
-                if not self.title or override:
-                    self.title = self.meta["name"][:64]
-                if not self.id or override:
-                    self.id = self.metadata["id"]
-                if not self.opl_id or override:
-                    self.opl_id = self.metadata["opl_id"]
-            except:
-                pass
-
-        # Max iso filename length = 64
-        # Max UL title length = 32
-        # FIXME: dynmaic length of filetype
-        if override:
-            try:
-                self.title = slugify(self.meta["name"][:32])
-            except:
-                pass
-
-        # self.filename = self.opl_id + "." + self.title
-
-        return True
-        # new_filename = self.filename[:64-len(".iso")]
-        # self.new_filename = new_filename
-
-    # Getting usefill data from filename
-    # for ul & iso names
-    def get_common_filedata(self) -> None:
-        self.filename = path.basename(self.filepath)
-        self.filedir = path.dirname(self.filepath)
-
-        if re.match(r'.*\.iso$', str(self.filename)):
-            self.filetype = "iso"
-            self.type = GameType.ISO
-
-        # try to get id out of filename
-        if (res := ID_REGEX.findall(self.filename)):
-            self.id = res[0]
-        else:
-            self.recover_id()
-
-        if not self.id:
-            return
-
-        self.gen_opl_id()
-        self.size = path.getsize(self.filepath) >> 20
 
 ####
 # UL-Format game, child-class of "Game"
@@ -157,14 +88,14 @@ Filepath:     {self.filepath}
 
 class ULGameImage(Game):
     # ULConfigGame object
-    from libopl.ul import ULConfigGame, ULConfig
+    from pyopl.ul import ULConfigGame, ULConfig
     ulcfg: ULConfigGame
     filenames: List[Path]
     size: float
     type: GameType = GameType.UL
     crc32: str
 
-    global ID_REGEX
+    global REGION_CODE_REGEX_STR
 
     # Chunk size matched USBUtil
     CHUNK_SIZE = 1073741824
@@ -209,9 +140,12 @@ class ULGameImage(Game):
             return False
         return True
 
-    def delete_files(self) -> None:
+    def delete_files(self, opl_dir: Path) -> None:
         for file in self.get_filenames():
             file.unlink()
+        for directory in ["ART", "CFG", "CHT"]:
+            for file in opl_dir.joinpath(directory).glob(f"{self.id}*"):
+                file.unlink()
 
     def __repr__(self):
         return f"""\n----------------------------------------
@@ -242,40 +176,40 @@ class IsoGameImage(Game):
             super().__init__(filepath)
             self.get_filedata()
 
-    # Get (meta-)data from filename
+    # Get data from filename
     def get_filedata(self) -> None:
+        self.get_common_filedata()
         self.filetype = "iso"
 
         # FIXME: Better title / id sub
-        self.title = ID_REGEX.sub('', self.filename)
+        self.title = REGION_CODE_REGEX_STR.sub('', self.filename)
         self.title = self.title.replace("."+self.filetype, '')
         self.title = self.title.strip('._-\ ')
         self.filename = self.filename.replace("."+self.filetype, '')
 
-    # (Split) ISO into UL-Format, returns number of parts
-    # TODO: Build a good ISO to UL conversion pipeline, it's a bit weird atm
-    def to_UL(src_iso: Path, dest_path: Path, force=False) -> int:
-        file_part = 0
-        with src_iso.open('rb') as f:
-            chunk = f.read(ULGameImage.CHUNK_SIZE)
-            title = re.sub(r'.[iI][sS][oO]', '', src_iso.name)
+    # Getting useful data from filename
+    # for iso names
+    def get_common_filedata(self) -> None:
+        self.filename = self.filepath.name
+        self.filedir = self.filepath.parent
 
-            while chunk:
-                crc32 = hex(usba_crc32(title.encode('ascii')))[2:].upper()
-                game_id = get_iso_id(src_iso)
-                part = hex(file_part)[2:4].zfill(2).upper()
+        self.filetype = "iso"
+        self.type = GameType.ISO
 
-                filename = f"ul.{crc32}.{game_id}.{part}"
-                filepath = dest_path.joinpath(filename)
+        # try to get id out of filename
+        if (res := REGION_CODE_REGEX_STR.findall(self.filename)):
+            self.id = res[0]
+        else:
+            self.id = get_iso_id(self.filepath)
 
-                if filepath.is_file() and not force:
-                    print(
-                        f"Warn: File '{filename}' already exists! Use -f to force overwrite.")
-                    return 0
+        if not self.id:
+            return
 
-                print(f"Writing File '{filepath}'...")
-                with open(filepath, 'wb') as outfile:
-                    outfile.write(chunk)
-                    file_part += 1
-                    chunk = f.read(ULGameImage.CHUNK_SIZE)
-        return file_part
+        self.gen_opl_id()
+        self.size = path.getsize(self.filepath) >> 20
+
+    def delete_game(self, opl_dir: Path): 
+        self.filepath.unlink()
+        for directory in ["ART", "CFG", "CHT"]:
+            for file in opl_dir.joinpath(directory).glob(f"{self.id}*"):
+                file.unlink()

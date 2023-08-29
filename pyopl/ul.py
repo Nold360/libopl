@@ -5,7 +5,7 @@ import re
 from typing import Dict, List
 from enum import Enum
 from pathlib import Path
-from libopl.common import usba_crc32, get_iso_id, ul_files_from_iso\
+from pyopl.common import usba_crc32, get_iso_id, ul_files_from_iso\
                         , check_ul_entry_for_corruption_and_crash  \
                         , check_ul_entry_for_corruption, ULCorruptionType
 
@@ -50,7 +50,7 @@ class ULConfigGame():
     game = None
 
     def __init__(self, filedir, data):
-        from libopl.game import ULGameImage
+        from pyopl.game import ULGameImage
         self.filedir = filedir
         self.name = bytes(data[:32])
         self.crc32 = hex(usba_crc32(self.name)).capitalize()
@@ -123,7 +123,7 @@ class ULConfig():
             self.write()
         else:
             raise IOError(
-                f"Files could not be created for game \'{title.decode('ascii')}\'")
+                f"Files could not be created for game \'{title.decode('ascii', 'ignore')}\'")
 
     # Add / Update Game using ul_ID & ULGameConfi/g object
 
@@ -171,15 +171,15 @@ class ULConfig():
                 "These games are installed but they are not part of UL.cfg, recovering...")
             for game in to_recover:
                 part_nr = len(list(self.filepath.parent.glob(
-                    "*"+game.decode('ascii').split('.')[1]+"*")))
+                    "*"+game.decode("ascii", "ignore").split('.')[1]+"*")))
 
                 first_part_size = next(
                     self.filepath.parent.glob(
-                        "*"+".".join(game.decode('ascii').split('.')[1:3])+".00")
+                        "*"+".".join(game.decode("ascii", "ignore").split('.')[1:3])+".00")
                 ).stat().st_size * (1024 ^ 2)
 
                 self.recover_game(game, part_nr, first_part_size)
-                print(f"Recovered \'{game.decode('ascii')}\'!")
+                print(f"Recovered \'{game.decode('ascii', 'ignore')}\'!")
 
     def recover_game(self, region_code: bytes, parts_nr: int, first_part_size: float, title=b"PLACEHOLDER"):
         region_code = region_code.ljust(14, b'\x00')
@@ -230,7 +230,7 @@ class ULConfig():
                     continue
                 match check_ul_entry_for_corruption(game_cfg):
                     case ULCorruptionType.REGION_CODE | ULCorruptionType.MEDIA_TYPE:
-                        print(f"The game with the title \'{game_cfg[0:32].decode('ascii')}\' is corrupted, recovering UL entry and renaming to 'PLACEHOLDER'")
+                        print(f"The game with the title \'{game_cfg[0:32].decode('ascii', 'ignore')}\' is corrupted, recovering UL entry and renaming to 'PLACEHOLDER'")
                         pass
                     case ULCorruptionType.NO_CORRUPTION:
                         final_file += game_cfg
