@@ -5,12 +5,31 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Run cue2pops on file",
+            "type": "python",
+            "request": "launch",
+            "module": "pyoplm",
+            "justMyCode": true,
+            "args": ["bintools", "cue2pops", "~/Downloads/Dynasty Warriors 2 (Europe)/backup.Dynasty Warriors 2 (Europe).cue"]
+        },
+        {
+            "name": "Run binmerge on file",
+            "type": "python",
+            "request": "launch",
+            "module": "pyoplm",
+            "justMyCode": true,
+            "args": ["bintools", "binmerge", "~/Downloads/Dynasty Warriors 2 (Europe)/backup.Dynasty Warriors 2 (Europe).cue", "DW"]
+        },
+        {
             "name": "List Games",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["list", "~/Documents/PS2SMB/"]
+            "args": [
+                "list",
+                "~/Documents/PS2SMB/"
+            ]
         },
         {
             "name": "Delete PES 2013",
@@ -18,7 +37,11 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["delete", "~/Documents/PS2SMB/", "SLES_556.66"]
+            "args": [
+                "delete",
+                "~/Documents/PS2SMB/",
+                "SLES_556.66"
+            ]
         },
         {
             "name": "Install PES 2013 as ISO",
@@ -26,7 +49,11 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["add", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
+            "args": [
+                "add",
+                "~/Documents/PS2SMB/",
+                "~/PES 2013 Pro Evolution Soccer.iso"
+            ]
         },
         {
             "name": "Install Shinobi as ISO, update from storage",
@@ -34,7 +61,13 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["add", "-s", "-f", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
+            "args": [
+                "add",
+                "-s",
+                "-f",
+                "~/Documents/PS2SMB/",
+                "~/SHINOBI.iso"
+            ]
         },
         {
             "name": "Install Shinobi as UL, update from storage",
@@ -42,7 +75,14 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["add", "-s", "-f","-ul", "~/Documents/PS2SMB/", "~/SHINOBI.iso"]
+            "args": [
+                "add",
+                "-s",
+                "-f",
+                "-ul",
+                "~/Documents/PS2SMB/",
+                "~/SHINOBI.iso"
+            ]
         },
         {
             "name": "Install PES 2013 as UL",
@@ -50,7 +90,12 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["add", "--ul", "~/Documents/PS2SMB/", "~/PES 2013 Pro Evolution Soccer.iso"]
+            "args": [
+                "add",
+                "--ul",
+                "~/Documents/PS2SMB/",
+                "~/PES 2013 Pro Evolution Soccer.iso"
+            ]
         },
         {
             "name": "Fix games",
@@ -58,56 +103,99 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["fix", "~/Documents/PS2SMB"]
+            "args": [
+                "fix",
+                "~/Documents/PS2SMB"
+            ]
         },
         {
             "name": "Install Crash Bandicoot in USB",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["add", "--ul", "~/Documents/PS2SMB", "~/Documents/PS2SMB/CD/SLUS_202.38.Crash Bandicoot TWOC.iso"]
+            "args": [
+                "add",
+                "--ul",
+                "~/Documents/PS2SMB",
+                "~/Documents/PS2SMB/CD/SLUS_202.38.Crash Bandicoot TWOC.iso"
+            ]
         },
         {
             "name": "Init directory structure on USB",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["init", "~/Documents/PS2SMB"]
+            "args": [
+                "init",
+                "~/Documents/PS2SMB"
+            ]
         },
         {
             "name": "Download all artwork",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["storage", "artwork", "-o", "/home/edish/Documents/PS2SMB"]
+            "args": [
+                "storage",
+                "artwork",
+                "-o",
+                "/home/edish/Documents/PS2SMB"
+            ]
         },
         {
             "name": "Download artwork for JAK II",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["storage", "artwork", "-o", "/home/edish/Documents/PS2SMB", "SCUS_972.65"]
+            "args": [
+                "storage",
+                "artwork",
+                "-o",
+                "/home/edish/Documents/PS2SMB",
+                "SCUS_972.65"
+            ]
         },
         {
             "name": "Bulk rename games to their original name",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["storage", "rename", "~/Documents/PS2SMB", "SCES_514.28", "SCUS_972.65", "SLES_556.66", "SLUS_209.46", "SLUS_212.28", "SLUS_215.03", "SLUS_216.21"]
+            "args": [
+                "storage",
+                "rename",
+                "~/Documents/PS2SMB",
+                "SCES_514.28",
+                "SCUS_972.65",
+                "SLES_556.66",
+                "SLUS_209.46",
+                "SLUS_212.28",
+                "SLUS_215.03",
+                "SLUS_216.21"
+            ]
         },
         {
             "name": "Rename JAK II to its original name",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["storage", "rename", "~/Documents/PS2SMB", "SCUS_972.65"]
+            "args": [
+                "storage",
+                "rename",
+                "~/Documents/PS2SMB",
+                "SCUS_972.65"
+            ]
         },
         {
             "name": "Rename God Hand to its original name",
             "type": "python",
             "request": "launch",
             "module": "pyoplm",
-            "args": ["rename", "~/Documents/PS2SMB", "SLUS_215.03", "God Hand"]
+            "args": [
+                "rename",
+                "~/Documents/PS2SMB",
+                "SLUS_215.03",
+                "God Hand"
+            ]
         }
     ]
 }

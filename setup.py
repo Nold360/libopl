@@ -13,6 +13,10 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/edisnord/pyoplm",
     packages=setuptools.find_packages(),
+    include_package_data=True,
+    package_data={"": ["pyoplm/lib/linux64/bchunk/*"],
+                  "": ["pyoplm/lib/linux64/binmerge/*"],
+                  "": ["pyoplm/lib/linux64/cue2pops/*"]},
     entry_points={
         'console_scripts': [
             'pyoplm= pyoplm:main',

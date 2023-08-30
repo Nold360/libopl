@@ -6,6 +6,7 @@ from shutil import copyfile
 from typing import List
 from pathlib import Path
 from configparser import ConfigParser
+import pyoplm.bintools
 
 from pyoplm.common import path_to_ul_cfg, get_iso_id
 from pyoplm.game import Game, ULGameImage, IsoGameImage, GameType
@@ -297,7 +298,7 @@ def main():
     list_parser.set_defaults(func=opl.list)
 
     add_parser = subparsers.add_parser(
-        "add", help="Add Media Image to OPL-Drive")
+        "add", help="Add Media Image to opl_dir")
     add_parser.add_argument(
         "--force", "-f", help="Force overwriting of existing files", action='store_true', default=False)
     add_parser.add_argument(
@@ -382,23 +383,54 @@ def main():
     del_parser.add_argument("opl_id", nargs="+",
                             help="OPL-ID of Media/ISO File to delete")
     del_parser.set_defaults(func=opl.delete)
+
+    tools_parser = subparsers.add_parser("bintools", help="Tools for processing cue/bin games")
+    tools_subparser = tools_parser.add_subparsers(help="Choose your path...")
+
+    bchunk_parser = tools_subparser.add_parser("bin2iso", help="Bin to ISO conversion (uses bchunk, repo: https://github.com/extramaster/bchunk)")
+    bchunk_parser.add_argument("-p", help=" PSX mode for MODE2/2352: write 2336 bytes from offset 24")
+    bchunk_parser.add_argument("src_bin",help="BIN file to convert")
+    bchunk_parser.add_argument("src_cue", help="CUE file related to image.bin")
+    bchunk_parser.add_argument("basedir", help="Output directory")
+    bchunk_parser.set_defaults(tools_func=pyoplm.bintools.bchunk)
+
+    binmerge_parser = tools_subparser.add_parser("binmerge", help="Merge multibin/cue into a single bin/cue (uses binmerge, repo: https://github.com/putnam/binmerge)")
+    binmerge_parser.add_argument("--outdir", "-o", help="output directory. defaults to the same directory as source cue.directory will be created (recursively) if needed.")
+    binmerge_parser.add_argument("--license", "-l", action="store_true", help="prints license info and exit")
+    binmerge_parser.add_argument("--split", "-s", action="store_true", help="reverses operation, splitting merged files back to individual tracks")
+    binmerge_parser.add_argument("cuefile", type=Path,help="CUE file pointing to bin files (bin files are expected in the same dir)")
+    binmerge_parser.add_argument("basedir", help="name (without extension) for your new bin/cue files")
+    binmerge_parser.set_defaults(tools_func=pyoplm.bintools.binmerge)
+
+    cue2pops_parser = tools_subparser.add_parser("cue2pops", help="Turn single cue/bin files into VCD format readable by POPSTARTER (uses cue2pops-linux, repo: https://github.com/tallero/cue2pops-linux).")
+    cue2pops_parser.add_argument("input_file", type=Path, help="Input cue file")
+    cue2pops_parser.add_argument("--gap", choices=["++", "--"], help="Adds(gap++)/subtracts(gap--) 2 seconds to all track indexes MSF")
+    cue2pops_parser.add_argument("--vmode", "-v", action="store_true",help="Attempts to patch the video mode to NTSC and to fix the screen position")
+    cue2pops_parser.add_argument("--trainer", "-t", action="store_true", help="Enable cheats")
+    cue2pops_parser.add_argument("output_file" ,help="output file", nargs="?")
+    cue2pops_parser.set_defaults(tools_func=pyoplm.bintools.cue2pops)
+
     arguments = parser.parse_args()
 
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
         sys.exit(1)
 
-    opl.set_args(arguments)
-
 
     if hasattr(arguments, "opl_dir"):
+        opl.set_args(arguments)
         opl_dir: Path = arguments.opl_dir
         if not opl_dir.exists() or not opl_dir.is_dir():
             print("Error: opl_dir directory doesn't exist!")
             sys.exit(1)
+        if hasattr(arguments, "func"):
+            arguments.func(arguments)
+        else:
+            parser.print_help(sys.stderr)
+            sys.exit(1)
 
-    if hasattr(arguments, "func"):
-        arguments.func(arguments)
+    if hasattr(arguments, "tools_func"):
+        arguments.tools_func(arguments)
     else:
         parser.print_help(sys.stderr)
         sys.exit(1)
