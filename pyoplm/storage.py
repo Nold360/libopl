@@ -433,10 +433,13 @@ class Storage:
 
                 case self.OperationState.FILESYSTEM:
                     glob_pattern_suffix = "_*" if art_type == "SCR" and art_type == "BG" else "*"
-                    art_files: Iterator[Path] = self.storage_location.joinpath("PS2", region_code)\
-                        .glob(f"{region_code}_{art_type}{glob_pattern_suffix}")
+                    ps2_art_files: Iterator[Path] = list(self.storage_location.joinpath("PS2", region_code)\
+                        .glob(f"{region_code}_{art_type}{glob_pattern_suffix}"))
+                    ps1_art_files: Iterator[Path] = list(self.storage_location.joinpath("PS1", region_code)\
+                        .glob(f"{region_code}_{art_type}{glob_pattern_suffix}"))
+                    
 
-                    for art_file in islice(art_files, 2 if art_type == "SCR" else 1):
+                    for art_file in islice(max(ps1_art_files, ps2_art_files, key=len), 2 if art_type == "SCR" else 1):
                         art_nr = ''
                         if art_type == "SCR" and art_type == "BG":
                             art_nr = int(art_file.name[16:18])+1

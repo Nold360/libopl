@@ -1,31 +1,25 @@
 # PyOPLM - Python Open PS2 Loader Manager
-This Repository containes the code for PyOPLM. PyOPLM is a simple, WIP python app to manage games installed in a directory used by [Open PS2 Loader](https://github.com/Jay-Jay-OPL/OPL-Daily-Builds). Supports SMB and USB folders at the moment, hard drive games support is WIP.
+PyOPLM is a simple, Linux-only, WIP python app to manage games installed in a directory used by [Open PS2 Loader](https://github.com/Jay-Jay-OPL/OPL-Daily-Builds). Supports SMB and USB folders at the moment, hard drive games support is WIP.
 
 ## Features
- - Add, remove and rename games in OPL-Drive 
-   - Support for both ISO games and UL
- - Read, write & merge ul.cfg
- - List all games on a OPL-Drive
- - init OPL-Drive with all needed folders
+ - Add, remove and rename games in your OPL Directory
+   - Support for ISO games, UL and POPS games (POPS and PS2 CD bin/cue game install support is only on x86_64 linux)
+ - Read, write and fix ul.cfg
+ - List all games on n OPL directory
+ - init OPL Directory with all needed folders
  - Fix game names for all games on drive
  - Update game titles and download game art from an online static file storage or local directory
-
-
-## ToDo:
- - Support for adding PS1 games
-    - cue/bin >> vcd
-    - multitrack cue/bin >> merge to one bin >> vcd
- - Support for installing bin/cue games (convert to ISO)
-  - Support for converting multitrack games to ISO (don't even know where to start with this one)
- - Might not work on Windows, i tried my best to make the code platform-independent but i have not tested it
-
+ - Comes packaged with [bchunk](https://github.com/extramaster/bchunk), [binmerge](https://github.com/putnam/binmerge) and [cue2pops-linux](https://github.com/tallero/cue2pops-linux) for x86_64 Linux, their respective licenses can be found in their folders in the pyoplm/lib/linux64 folder of this repo
 
 ## Installation
 ```bash
 pip install pyoplm
 ```
 
-Latest version is 0.3
+## TODO
+ - CFG file editor, download game data from an open api like RAWG.io
+
+Latest version is 0.4
 
 ## Artwork and title database
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 ###
-# Python CLI Replacement for OPLManager
 
 from shutil import copyfile, move
 from typing import List
@@ -219,7 +218,7 @@ class POPLManager:
         self.fix(self.args)
 
 
-    def conv_ps2_cd_to_iso(self, cuefile_path: Path):
+    def __conv_ps2_cd_to_iso(self, cuefile_path: Path):
         if not cuefile_path.exists():
             print(f"File {cuefile_path.as_posix()} does not exist, skipping...")
             return
@@ -271,7 +270,7 @@ class POPLManager:
 
             if re.match(r"^.[cC][uU][eE]$", game_path.suffix):
                 print(f"Attempting to convert game {game_path} to ISO...")
-                self.conv_ps2_cd_to_iso(game_path)
+                self.__conv_ps2_cd_to_iso(game_path)
                 continue
 
             iso_id = get_iso_id(game_path)
