@@ -1,7 +1,5 @@
-# PyOPM - Python OPL Manager
-This Repository containes the code for pyoplm. pyoplm is a simple, WIP Python implementation
-of the "OPL Manager". While there is a cli frontend, it's sub-classes can also
-be used as a library to parse the "ul.cfg", split games to ul-format, fix filenames, etc.
+# PyOPLM - Python Open PS2 Loader Manager
+This Repository containes the code for PyOPLM. PyOPLM is a simple, WIP python app to manage games installed in a directory used by [Open PS2 Loader](https://github.com/Jay-Jay-OPL/OPL-Daily-Builds). Supports SMB and USB folders at the moment, hard drive games support is WIP.
 
 ## Features
  - Add, remove and rename games in OPL-Drive 
@@ -31,13 +29,13 @@ pip install pyoplm
 
 Due to this being an open source project, a bit of "self hosting" is required to get these features that require storage to work
 
-In order to have support for artwork downloading and game title fetching, you need to either download one of danielb's [OPLM monthly art database backups](https://oplmanager.com/site/?backups) (i tested this program on [OPLM_ART_2023_07.zip](https://archive.org/download/OPLM_ART_2023_07/OPLM_ART_2023_07.zip)) on your system or host the contents of a ZIP backup in a server (like Google cloud storage buckets, i like using Google cloud because of te free trails but you can place the files anywhere), and give this program the location where the backup is unzipped, and then you can download artwork and update titles for any installed game on your drive.
+In order to have support for artwork downloading and game title fetching, you need to either download one of danielb's [OPLM monthly art database backups](https://oplmanager.com/site/?backups) (i tested this program on [OPLM_ART_2023_07.zip](https://archive.org/download/OPLM_ART_2023_07/OPLM_ART_2023_07.zip)) on your system or host the contents of a ZIP backup in a static file storage server (like Google cloud storage buckets, i like using Google cloud because of te free trails but you can place the files anywhere), and give this program the location where the backup is unzipped, and then you can download artwork and update titles for any installed game on your drive.
 
 In order to be able to use storage features, you need to create a file named `pyoplm.ini` in your OPL directory, and insert your storage URL in there  just like in the file `example.pyoplm.ini` in the root of this repo.
 
 ### Indexing the zip backups
 
-This program supports indexing for the zip files, which is a much faster way of downloading art and titles from online storages (for local storages too, but it doesn't make too much of a difference in speed). This is necessary because the number types of art a game has on an online storage can only be found out through guessing without the data being indexed, which leads to the non-indexed usage of the storage features being much slower.
+This program supports indexing for the zip files, which is a much faster way of downloading art and titles from online storages (for local storages too, but it doesn't make too much of a difference in speed). This is necessary because the types of art a game has on an online storage can only be found out through guessing without the data being indexed, which leads to the non-indexed usage of the storage features being much slower.
 
 Perform these steps to enable indexing:
 
