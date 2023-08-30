@@ -18,7 +18,7 @@
             "request": "launch",
             "module": "pyoplm",
             "justMyCode": true,
-            "args": ["bintools", "binmerge", "~/Downloads/Dynasty Warriors 2 (Europe)/backup.Dynasty Warriors 2 (Europe).cue", "DW"]
+            "args": ["bintools", "binmerge", "-o", "/tmp" ,"/home/edish/Downloads/Mickey's Wild Adventure (Europe)/Mickey's Wild Adventure (Europe)/Mickey's Wild Adventure (Europe).cue", "Mickey"]
         },
         {
             "name": "List Games",

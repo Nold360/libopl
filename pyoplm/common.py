@@ -33,7 +33,7 @@ def get_iso_id(filepath: Path) -> str:
             id_matches: List[bytes] = REGION_CODE_REGEX_BYTES.findall(chunk)
             if id_matches:
                 return id_matches[0].decode("ascii", "ignore")
-    raise ValueError(f"Cannot find Game ID for ISO file '{filepath}'")
+    raise ValueError(f"Cannot find Game ID for ISO/VCD file '{filepath}'")
 
 
 def ul_files_from_iso(src_iso: Path, dest_path: Path, force=False) -> int:

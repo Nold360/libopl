@@ -14,37 +14,35 @@ from os import path
 class GameType(Enum):
     UL = "UL (USBExtreme)"
     ISO = "ISO"
+    POPS = "VCD"
 
 
 class Game():
     # constant values for gametypes
-    type: GameType = None
+    type: GameType
     global REGION_CODE_REGEX_BYTES
-    ulcfg = None
 
-    filedir: str
+    filedir: Path
     filename: str
     filetype: str
     filepath: Path
     id: str
     opl_id: str
     title: str
-    crc32: str
     size: float
-    src_title: str
-    src_filename: str
-    meta: dict
 
     # Regex for game serial/ids
 
     # Recover generate id from filename
-    def __init__(self, filepath):
-        if filepath:
-            self.filepath = Path(filepath)
+    def __init__(self, filepath: Path):
+        self.filepath = filepath
+        self.filename = self.filepath.name
+        self.filedir = self.filepath.parent
 
     def __repr__(self):
         return f"""\n----------------------------------------
-LANG=en_US.UTF-8OPL-ID:       {self.opl_id}
+LANG=en_US.UTF-8
+Region code:       {self.opl_id}
 Size (MB):    {self.size} 
 New Title:    {self.title} 
 Filename:     {self.filename}
@@ -81,6 +79,10 @@ Filepath:     {self.filepath}
                     self.id = id_matches[0].decode('ascii', 'ignore')
                     self.gen_opl_id()
 
+    def delete_game(self, opl_dir:Path):
+        for directory in ["ART", "CFG", "CHT", "VMC"]:
+            for file in opl_dir.joinpath(directory).glob(f"{self.id}*"):
+                file.unlink()
 
 ####
 # UL-Format game, child-class of "Game"
@@ -140,16 +142,15 @@ class ULGameImage(Game):
             return False
         return True
 
-    def delete_files(self, opl_dir: Path) -> None:
+    def delete_game(self, opl_dir: Path) -> None:
         for file in self.get_filenames():
             file.unlink()
-        for directory in ["ART", "CFG", "CHT"]:
-            for file in opl_dir.joinpath(directory).glob(f"{self.id}*"):
-                file.unlink()
+        super().delete_game(opl_dir)
 
     def __repr__(self):
         return f"""\n----------------------------------------
-LANG=en_US.UTF-8OPL-ID:       {self.opl_id}
+LANG=en_US.UTF-8
+Region Code:       {self.opl_id}
 Size (MB):    {self.size} 
 Title:    {self.title} 
 
@@ -165,37 +166,15 @@ Filepath:     {self.filepath}
 
 
 class IsoGameImage(Game):
-    type = GameType.ISO
-    title: str
-    filename: str
-    crc32: str
-
     # Create Game based on filepath
-    def __init__(self, filepath=None):
-        if filepath:
-            super().__init__(filepath)
-            self.get_filedata()
+    def __init__(self, filepath):
+        self.type = GameType.ISO
+        self.filetype = "ISO"
+        super().__init__(filepath)
+        self.get_filedata()
 
     # Get data from filename
     def get_filedata(self) -> None:
-        self.get_common_filedata()
-        self.filetype = "iso"
-
-        # FIXME: Better title / id sub
-        self.title = REGION_CODE_REGEX_STR.sub('', self.filename)
-        self.title = self.title.replace("."+self.filetype, '')
-        self.title = self.title.strip('._-\ ')
-        self.filename = self.filename.replace("."+self.filetype, '')
-
-    # Getting useful data from filename
-    # for iso names
-    def get_common_filedata(self) -> None:
-        self.filename = self.filepath.name
-        self.filedir = self.filepath.parent
-
-        self.filetype = "iso"
-        self.type = GameType.ISO
-
         # try to get id out of filename
         if (res := REGION_CODE_REGEX_STR.findall(self.filename)):
             self.id = res[0]
@@ -206,10 +185,44 @@ class IsoGameImage(Game):
             return
 
         self.gen_opl_id()
-        self.size = path.getsize(self.filepath) >> 20
+        self.size = self.filepath.stat().st_size / (1024 ^ 2) 
+
+        # FIXME: Better title / id sub
+        self.title = REGION_CODE_REGEX_STR.sub('', self.filename)
+        self.title = re.sub(r".[iI][sS][oO]", "", self.title)
+        self.title = self.title.strip('._-\ ')
+        self.filename = re.sub(r".[iI][sS][oO]", "", self.filename)
 
     def delete_game(self, opl_dir: Path): 
         self.filepath.unlink()
-        for directory in ["ART", "CFG", "CHT"]:
-            for file in opl_dir.joinpath(directory).glob(f"{self.id}*"):
-                file.unlink()
+        super().delete_game(opl_dir)
+
+class POPSGameImage(Game):
+    REGION_CODE_OFFSET = 1086272
+
+    def __init__(self, filepath: path):
+        super().__init__(filepath)
+        self.size = self.filepath.stat().st_size / (1024 ^ 2)
+        self.filetype = "VCD"
+        self.type = GameType.POPS
+        self.id = get_iso_id(filepath)
+        self.gen_opl_id()
+        self.get_title_from_filename()
+    
+    def delete_game(self, opl_dir: Path): 
+        from shutil import rmtree
+        self.filepath.unlink()
+        rmtree(self.filedir.joinpath(self.filename[:-4]))
+        super().delete_game(opl_dir)
+    
+    def get_title_from_filename(self):
+        self.title = REGION_CODE_REGEX_STR.sub('', self.filename)
+        self.title = re.sub(r".[vV][cC][dD]", "", self.title)
+        self.title = self.title.strip('._-\ ')
+
+    def get_id_from_file(self):
+        with self.filepath.open('rb') as vcd:
+            vcd.seek(self.REGION_CODE_OFFSET)
+            region_code = vcd.read(10)
+            self.id = (region_code[:8] + b'.' + region_code[8:]).decode('ascii')
+

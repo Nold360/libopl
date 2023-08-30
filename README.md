@@ -25,6 +25,8 @@ This Repository containes the code for PyOPLM. PyOPLM is a simple, WIP python ap
 pip install pyoplm
 ```
 
+Latest version is 0.3
+
 ## Artwork and title database
 
 Due to this being an open source project, a bit of "self hosting" is required to get these features that require storage to work
@@ -55,7 +57,7 @@ Perform these steps to enable indexing:
 ## Usage
 ```
 $ pyoplm --help
-usage: opl [-h] {list,add,storage,rename,fix,init,delete} ...
+usage: pyoplm [-h] {list,add,storage,rename,fix,init,delete} ...
 
 positional arguments:
   {list,add,storage,rename,fix,init,delete}
