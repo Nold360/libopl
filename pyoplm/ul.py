@@ -149,8 +149,6 @@ class ULConfig():
                 self.ulgames.update({game.region_code: game})
                 game_cfg = data.read(64)
 
-        # return True
-
     # Write back games to ul.cfg
     def write(self):
         with open(self.filepath, 'wb+') as cfg:

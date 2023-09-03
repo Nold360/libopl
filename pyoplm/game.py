@@ -4,7 +4,7 @@
 #
 from functools import reduce
 from pathlib import Path
-from pyoplm.common import REGION_CODE_REGEX_BYTES, get_iso_id, slugify, read_in_chunks, usba_crc32, REGION_CODE_REGEX_STR
+from pyoplm.common import REGION_CODE_REGEX_BYTES, get_iso_id, slugify, read_in_chunks, REGION_CODE_REGEX_STR
 
 import re
 from typing import List

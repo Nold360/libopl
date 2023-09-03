@@ -43,5 +43,3 @@ def binmerge(args: BinMergeArgs):
     args_list = list(filter(bool, args_list))
     complete = subprocess.run(args_list)
     return complete.returncode
-
-
