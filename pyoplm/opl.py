@@ -169,17 +169,20 @@ class POPLManager:
         TMP_FILES_NAME = "pyoplm_tmp"
         print("Installing PSX game " + cuefile_path.as_posix())
         if len(cuefile_path.stem) > 32:
-            print(f"The cue file's name will be kept as a game title, please make the filename {cuefile_path.stem} less than 32 characters long", file=sys.stderr)
+            print(
+                f"The cue file's name will be kept as a game title, please make the filename {cuefile_path.stem} less than 32 characters long", file=sys.stderr)
             return
         if not (cuefile_path.exists()):
-            print(f"POPS game with path {cuefile_path.as_posix()} doesn't exist, skipping...", file=sys.stderr)
+            print(
+                f"POPS game with path {cuefile_path.as_posix()} doesn't exist, skipping...", file=sys.stderr)
             return
 
         with cuefile_path.open("r") as cue:
             filecount = cue.read().count("FILE")
             needs_binmerge = filecount > 1
             if filecount == 0:
-                print(f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
+                print(
+                    f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
                 return
 
         if needs_binmerge:
@@ -190,52 +193,56 @@ class POPLManager:
                                                  outdir="/tmp")
             binmerge_exit_code = pyoplm.bintools.binmerge(bm_args)
             if binmerge_exit_code != 0:
-                print(f"Binmerge finished with exit code: {binmerge_exit_code} for game {cuefile_path}, skipping..."
-                      ,file=sys.stderr)
+                print(
+                    f"Binmerge finished with exit code: {binmerge_exit_code} for game {cuefile_path}, skipping...", file=sys.stderr)
                 return
 
         cue2pops_input = cuefile_path if not needs_binmerge else Path(
             f"/tmp/{TMP_FILES_NAME}.cue")
-        cue2pops_output = self.opl_dir.joinpath("POPS", cuefile_path.stem + ".VCD")
+        cue2pops_output = self.opl_dir.joinpath(
+            "POPS", cuefile_path.stem + ".VCD")
         cue2pops_args: Cue2PopsArgs = Cue2PopsArgs(
-            input_file=cue2pops_input, 
+            input_file=cue2pops_input,
             gap=None,
             vmode=None,
             trainer=None,
             output_file=cue2pops_output
-            )
-        cue2pops_exit_code = pyoplm.bintools.cue2pops(cue2pops_args)           
+        )
+        cue2pops_exit_code = pyoplm.bintools.cue2pops(cue2pops_args)
         if cue2pops_exit_code != 1:
-            print(f"Cue2pops finished with exit code: {cue2pops_exit_code} for game {cuefile_path}, skipping..."
-                   ,file=sys.stderr)
+            print(
+                f"Cue2pops finished with exit code: {cue2pops_exit_code} for game {cuefile_path}, skipping...", file=sys.stderr)
             if needs_binmerge:
                 cue2pops_input.unlink()
                 cue2pops_input.with_suffix(".bin").unlink()
             return
-        
-        print(f"Successfully installed POPS {cuefile_path.stem} game to opl_dir, ")
+
+        print(
+            f"Successfully installed POPS {cuefile_path.stem} game to opl_dir, ")
         if needs_binmerge:
             cue2pops_input.unlink()
             cue2pops_input.with_suffix(".bin").unlink()
-        
+
         cue2pops_output.chmod(0o777)
 
         self.fix(self.args)
-
 
     def __conv_ps2_cd_to_iso(self, cuefile_path: Path):
         if not cuefile_path.exists():
             print(f"File {cuefile_path.as_posix()} does not exist, skipping...")
             return
         if len(cuefile_path.stem) > 32:
-            print(f"The cue file's name will be kept as a game title, please make the filename {cuefile_path.stem} less than 32 characters long",file=sys.stderr)
+            print(
+                f"The cue file's name will be kept as a game title, please make the filename {cuefile_path.stem} less than 32 characters long", file=sys.stderr)
             return
         with cuefile_path.open("r") as cue:
             if len(binfile := re.findall(r"\"(.*.bin)\"", cue.read())) > 1:
-                print(f"The game {cuefile_path.as_posix()} has more than one track, which is not supported for single-iso conversion by bchunk", file=sys.stderr)
-                return 
+                print(
+                    f"The game {cuefile_path.as_posix()} has more than one track, which is not supported for single-iso conversion by bchunk", file=sys.stderr)
+                return
             elif not binfile:
-                print(f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
+                print(
+                    f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
                 return
 
         bchunk_binfile = cuefile_path.parent.joinpath(binfile[0])
@@ -247,10 +254,11 @@ class POPLManager:
         ))
         if bchunk_exit_code != 0:
             print(f"Failed to install game {cuefile_path.stem}")
-            print(f"Cue2pops finished with exit code: {bchunk_exit_code} for game {cuefile_path}, skipping..."
-                   ,file=sys.stderr)
+            print(
+                f"Cue2pops finished with exit code: {bchunk_exit_code} for game {cuefile_path}, skipping...", file=sys.stderr)
 
-        finished_conv_path = cuefile_path.with_name(cuefile_path.stem + "01.iso")
+        finished_conv_path = cuefile_path.with_name(
+            cuefile_path.stem + "01.iso")
         final_path = self.opl_dir.joinpath("CD", cuefile_path.stem + ".iso")
 
         move(
@@ -263,7 +271,6 @@ class POPLManager:
         print(f"Successfully installed game {cuefile_path.stem}")
 
         self.fix(self.args)
-
 
     # Add game(s) to args.opl_dir
     #  - split game if > 4GB / forced
@@ -283,7 +290,7 @@ class POPLManager:
 
             iso_id = get_iso_id(game_path)
             # Game size in MB
-            game_size = game_path.stat().st_size / 1024 ** 2
+            game_size = game_path.stat().st_size / (1024 ** 2)
 
             if (game_size > 4000 and not args.iso) or args.ul:
                 ul_cfg = ULConfig(path_to_ul_cfg(args.opl_dir))
@@ -351,8 +358,6 @@ class POPLManager:
                                 f"{game.opl_id}.{game.title}.{game.filetype}")
                         )
 
-                        game.filepath.chmod(0o777)
-
                         if game.type == GameType.POPS:
                             pops_data_folder = game.filedir.joinpath(
                                 game.filepath.stem)
@@ -362,7 +367,7 @@ class POPLManager:
                                         f"{game.opl_id}.{game.title}")
                                 )
 
-                        
+                        game.filepath.chmod(0o777)
                         game.filename = game.filepath.name
                         game.gen_opl_id()
                         game.print_data()
@@ -540,7 +545,8 @@ def main():
         "-p", help=" PSX mode for MODE2/2352: write 2336 bytes from offset 24")
     bchunk_parser.add_argument("src_bin", help="BIN file to convert")
     bchunk_parser.add_argument("src_cue", help="CUE file related to image.bin")
-    bchunk_parser.add_argument("basename", help="name (without extension) for your new bin/cue files")
+    bchunk_parser.add_argument(
+        "basename", help="name (without extension) for your new bin/cue files")
     bchunk_parser.set_defaults(tools_func=pyoplm.bintools.bchunk)
 
     binmerge_parser = tools_subparser.add_parser(
