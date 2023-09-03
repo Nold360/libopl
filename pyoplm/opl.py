@@ -245,6 +245,7 @@ class POPLManager:
                     f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
                 return
 
+        os.chdir(cuefile_path.parent)
         bchunk_binfile = cuefile_path.parent.joinpath(binfile[0])
         bchunk_exit_code = pyoplm.bintools.bchunk(BChunkArgs(
             p=None,
