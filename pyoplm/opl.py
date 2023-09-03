@@ -149,6 +149,8 @@ class POPLManager:
                         )
                         game.filepath = game.filepath.rename(new_filepath)
 
+                        new_filepath.chmod(0o777)
+
                         game.title = args.new_title
                         print(
                             f"The game \'{game.opl_id}\' was renamed to \'{game.title}\'")
@@ -216,7 +218,7 @@ class POPLManager:
             cue2pops_input.unlink()
             cue2pops_input.with_suffix(".bin").unlink()
         
-        os.chmod(cue2pops_output, 0o777)
+        cue2pops_output.chmod(0o777)
 
         self.fix(self.args)
 
@@ -256,7 +258,7 @@ class POPLManager:
             final_path
         )
 
-        os.chmod(final_path, 0o777)
+        final_path.chmod(0o777)
 
         print(f"Successfully installed game {cuefile_path.stem}")
 
@@ -315,7 +317,7 @@ class POPLManager:
                     print(
                         f"Copying game to \'{new_game_path}\', please wait...")
                     copyfile(game_path, new_game_path)
-                    os.chmod(new_game_path, 0o777)
+                    new_game_path.chmod(0o777)
                     print("Done!")
 
             if self.storage.is_enabled() and args.storage:
@@ -349,15 +351,18 @@ class POPLManager:
                                 f"{game.opl_id}.{game.title}.{game.filetype}")
                         )
 
+                        game.filepath.chmod(0o777)
+
                         if game.type == GameType.POPS:
                             pops_data_folder = game.filedir.joinpath(
-                                game.filename[:-4])
+                                game.filepath.stem)
                             if pops_data_folder.exists():
-                                game.filedir.joinpath(game.filename[:-4]).rename(
+                                game.filedir.joinpath(game.filepath.stem).rename(
                                     game.filedir.joinpath(
                                         f"{game.opl_id}.{game.title}")
                                 )
 
+                        
                         game.filename = game.filepath.name
                         game.gen_opl_id()
                         game.print_data()

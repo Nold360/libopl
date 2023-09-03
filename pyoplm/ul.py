@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # from game import ULGameImage
 import math
+import os
 import re
 from typing import Dict, List
 from enum import Enum
@@ -154,6 +155,8 @@ class ULConfig():
         with open(self.filepath, 'wb+') as cfg:
             for game in self.ulgames.values():
                 cfg.write(game.get_binary_data())
+        
+        self.filepath.chmod(0o777)
 
     def find_and_recover_games(self):
         installed_region_codes = set(
