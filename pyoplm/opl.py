@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 ###
 
+import os
 from shutil import copyfile, move
 from typing import List
 from pathlib import Path
@@ -193,12 +194,13 @@ class POPLManager:
 
         cue2pops_input = cuefile_path if not needs_binmerge else Path(
             f"/tmp/{TMP_FILES_NAME}.cue")
+        cue2pops_output = self.opl_dir.joinpath("POPS", cuefile_path.stem + ".VCD")
         cue2pops_args: Cue2PopsArgs = Cue2PopsArgs(
             input_file=cue2pops_input, 
             gap=None,
             vmode=None,
             trainer=None,
-            output_file=self.opl_dir.joinpath("POPS", cuefile_path.stem + ".VCD")
+            output_file=cue2pops_output
             )
         cue2pops_exit_code = pyoplm.bintools.cue2pops(cue2pops_args)           
         if cue2pops_exit_code != 1:
@@ -210,10 +212,11 @@ class POPLManager:
             return
         
         print(f"Successfully installed POPS {cuefile_path.stem} game to opl_dir, ")
-        print(cue2pops_input)
         if needs_binmerge:
             cue2pops_input.unlink()
             cue2pops_input.with_suffix(".bin").unlink()
+        
+        os.chmod(cue2pops_output, 0o777)
 
         self.fix(self.args)
 
@@ -232,7 +235,6 @@ class POPLManager:
             elif not binfile:
                 print(f"Cue file is invalid {cuefile_path.as_posix()} or there are no bin files, skipping...", file=sys.stderr)
                 return
-        print("BINFILE: " + str(binfile))
 
         bchunk_binfile = cuefile_path.parent.joinpath(binfile[0])
         bchunk_exit_code = pyoplm.bintools.bchunk(BChunkArgs(
@@ -247,10 +249,14 @@ class POPLManager:
                    ,file=sys.stderr)
 
         finished_conv_path = cuefile_path.with_name(cuefile_path.stem + "01.iso")
+        final_path = self.opl_dir.joinpath("CD", cuefile_path.stem + ".iso")
+
         move(
             finished_conv_path,
-            self.opl_dir.joinpath("CD", cuefile_path.stem + ".iso")
+            final_path
         )
+
+        os.chmod(final_path, 0o777)
 
         print(f"Successfully installed game {cuefile_path.stem}")
 
@@ -309,6 +315,7 @@ class POPLManager:
                     print(
                         f"Copying game to \'{new_game_path}\', please wait...")
                     copyfile(game_path, new_game_path)
+                    os.chmod(new_game_path, 0o777)
                     print("Done!")
 
             if self.storage.is_enabled() and args.storage:

@@ -2,6 +2,7 @@
 ###
 # Shared functions
 from enum import Enum
+import os
 from pathlib import Path
 
 import ctypes
@@ -58,10 +59,11 @@ def ul_files_from_iso(src_iso: Path, dest_path: Path, force=False) -> int:
                 return 0
 
             print(f"Writing File '{filepath}'...")
-            with open(filepath, 'wb') as outfile:
+            with filepath.open('wb') as outfile:
                 outfile.write(chunk)
                 file_part += 1
                 chunk = f.read(CHUNK_SIZE)
+                os.chmod(filepath, 0o777)
     return file_part
 
 
