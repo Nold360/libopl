@@ -16,10 +16,11 @@ PyOPLM is a simple, Linux-only, WIP python app to manage games installed in a di
 pip install pyoplm
 ```
 
+Latest version is 0.5
+
 ## TODO
  - CFG file editor, download game data from an open api like RAWG.io
 
-Latest version is 0.4
 
 ## Artwork and title database
 
@@ -49,6 +50,10 @@ Perform these steps to enable indexing:
 6. Enjoy 2x+ faster online storage artwork and title download times :)
 
 ## Usage
+
+The argument opl_dir is mostly required to be supplid by the commands of this app, but can be avoided by putting your
+OPL Directory in an environment variable named PYOPLM_OPL_DIR 
+
 ```
 $ pyoplm --help
 usage: pyoplm [-h] {list,add,storage,rename,fix,init,delete} ...

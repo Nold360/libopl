@@ -102,13 +102,15 @@ class POPLManager:
                             print("Adjusting ul.cfg...")
                             ul_cfg.write()
                             print("Deleting game chunks...")
-                            game.delete_game()
+                            game.delete_game(self.opl_dir)
                             print("No more games left, deleting ul.cfg...")
                             if not len(ul_cfg.ulgames):
                                 ul_cfg.filepath.unlink()
                         case GameType.ISO | GameType.POPS:
+                            print(f"Deleting game {game.opl_id}...")
                             if game.filepath.exists():
-                                game.delete_game()
+                                game.delete_game(self.opl_dir)
+                                print("Done!")
 
                     for art_file in args.opl_dir.joinpath("ART").glob(f"{args.opl_id}*"):
                         art_file.unlink()
@@ -310,8 +312,10 @@ class POPLManager:
 
                     if self.storage.is_enabled() and args.storage:
                         title = self.storage.get_game_title(iso_id)
+                    else:
+                        title = ''
 
-                    if title:
+                    if not title:
                         title = str.split(game_path.name, '.')[0]
 
                     if len(title) > 32:
@@ -446,7 +450,7 @@ def main():
     list_parser = subparsers.add_parser("list", help="List Games on OPL-Drive")
     list_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     list_parser.set_defaults(func=opl.list)
 
     add_parser = subparsers.add_parser(
