@@ -16,7 +16,7 @@ PyOPLM is a simple, Linux-only, WIP python app to manage games installed in a di
 pip install pyoplm
 ```
 
-Latest version is 0.5
+Latest version is 0.51
 
 ## TODO
  - CFG file editor, download game data from an open api like RAWG.io

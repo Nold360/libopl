@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="pyoplm",
-    version="0.5",
+    version="0.51",
     author="Nold, edisnord",
     author_email="nold@gnu.one, edisnord@gmail.com",
     description="Tool To Manage Open-PS2-Loader USB-Drives & Games",
@@ -14,6 +14,10 @@ setuptools.setup(
     url="https://github.com/edisnord/pyoplm",
     packages=setuptools.find_packages(),
     include_package_data=True,
+    install_requires=[
+        "pillow==9.4.0",
+        "beautifulsoup4==4.12.2"
+    ],
     package_data={"": ["pyoplm/lib/linux64/bchunk/*"],
                   "": ["pyoplm/lib/linux64/binmerge/*"],
                   "": ["pyoplm/lib/linux64/cue2pops/*"]},
