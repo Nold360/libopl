@@ -463,7 +463,7 @@ def main():
         "--storage", "-s", help="Get title and artwork from storage if it's enabled", action="store_true")
     add_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     add_parser.add_argument("src_file", nargs="+",
                             help="Media/ISO Source File",
                             type=lambda file: Path(file))
@@ -481,7 +481,7 @@ def main():
     )
     artwork_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     artwork_parser.add_argument(
         "--overwrite", "-o", help="Overwrite existing art files for games", action="store_true")
     artwork_parser.add_argument("opl_id", help="OPL-IDs of games to download artwork for", nargs="*"
@@ -494,7 +494,7 @@ def main():
     )
     storage_rename_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     storage_rename_parser.add_argument("opl_id",
                                        help="OPL-IDs of games to rename",
                                        nargs="*")
@@ -505,7 +505,7 @@ def main():
     )
     rename_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     rename_parser.add_argument(
         "--ul", "-u", help="Force UL-Game converting", action="store_true")
     rename_parser.add_argument("opl_id",
@@ -518,20 +518,20 @@ def main():
         "fix", help="rename/fix media filenames")
     fix_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     fix_parser.set_defaults(func=opl.fix)
 
     init_parser = subparsers.add_parser(
         "init", help="Initialize OPL folder structure")
     init_parser.add_argument(
         "opl_dir", help="Path to your OPL USB or SMB Directory\nExample: /media/usb",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     init_parser.set_defaults(func=opl.init)
 
     del_parser = subparsers.add_parser("delete", help="Delete game from Drive")
     del_parser.add_argument(
         "opl_dir", help="Path to your OPL directory",
-        type=lambda x: Path(x))
+        type=Path, nargs="?")
     del_parser.add_argument("opl_id", nargs="+",
                             help="OPL-ID of Media/ISO File to delete")
     del_parser.set_defaults(func=opl.delete)
@@ -584,6 +584,12 @@ def main():
         sys.exit(1)
 
     if hasattr(arguments, "opl_dir"):
+        if not arguments.opl_dir:
+            try:
+                arguments.opl_dir = Path(os.environ["PYOPLM_OPL_DIR"])
+            except KeyError:
+                print("The argument opl_dir must be supplied either as a command line argument or as an environment variable named 'PYOPLM_OPL_DIR.'", file=sys.stderr)
+                sys.exit(1)
         opl.set_args(arguments)
         opl_dir: Path = arguments.opl_dir
         if not opl_dir.exists() or not opl_dir.is_dir():
@@ -607,3 +613,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
