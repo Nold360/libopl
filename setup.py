@@ -16,7 +16,8 @@ setuptools.setup(
     include_package_data=True,
     install_requires=[
         "pillow==9.4.0",
-        "beautifulsoup4==4.12.2"
+        "beautifulsoup4==4.12.2",
+        "lxml"
     ],
     package_data={"": ["pyoplm/lib/linux64/bchunk/*"],
                   "": ["pyoplm/lib/linux64/binmerge/*"],

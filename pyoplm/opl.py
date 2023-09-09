@@ -77,9 +77,14 @@ class POPLManager:
         return self.iso_games
 
     def __get_all_ul_games(self) -> List[Game]:
+        if not (ulcfg_file := path_to_ul_cfg(self.opl_dir)).exists():
+            self.ul_games = []
+            return []
+        
         ul_cfg: ULConfig = ULConfig(
-            path_to_ul_cfg(self.opl_dir)
+            ulcfg_file
         )
+
         if not self.ul_games:
             games = [game_cfg.game for game_cfg in ul_cfg.ulgames.values()]
             self.ul_games = games
@@ -340,11 +345,12 @@ class POPLManager:
     # Recover UL games which are not in ul.cfg
     # Find corrupted entries in ul.cfg first and delete them
     def fix(self, args):
-        ULConfig.find_and_delete_corrupted_entries(
-            path_to_ul_cfg(args.opl_dir))
+        if (ulcfg_file := path_to_ul_cfg(args.opl_dir)).exists():
+            ULConfig.find_and_delete_corrupted_entries(
+                ulcfg_file)
 
-        ulcfg = ULConfig(path_to_ul_cfg(args.opl_dir))
-        ulcfg.find_and_recover_games()
+            ulcfg = ULConfig(ulcfg_file)
+            ulcfg.find_and_recover_games()
 
         print("Fixing ISO and POPS game file names for OPL read speed and deleting broken UL games")
         for game in self.__get_full_game_list():
@@ -417,21 +423,27 @@ class POPLManager:
             print("|-> POPS Games:")
             for game in pops_games:
                 print(f" {str(game)}")
+        else:
+            print("No POPS games installed")
 
         # Read ul.cfg & output games
         if path_to_ul_cfg(self.args.opl_dir).exists():
-            print('|-> UL Games:')
-            for game in self.__get_all_ul_games():
-                print(f" {str(game)}")
+            self.__get_all_ul_games()
+            if not self.ul_games:
+                print("No UL Games installed")
+            else:
+                for game in self.ul_games:
+                    print(f" {str(game)}")
         else:
-            print("No UL-Games installed")
+            print("No UL Games installed")
 
-    # Create OPL Folders / stuff
+    # Create OPL Folders and empty ul.cfg
     def init(self, args):
         print("Inititalizing OPL-Drive...")
         for dir in ["APPS", "LNG", "ART", "CD", "CFG", "CHT", "DVD", "THM", "VMC", "POPS"]:
             if not (dir := args.opl_dir.joinpath(dir)).is_dir():
                 dir.mkdir(0o777)
+        self.opl_dir.joinpath("ul.cfg").touch(0o777)
         print("Done!")
 ####
 # Main
